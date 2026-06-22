@@ -38,8 +38,11 @@ export class CorruptionSystem {
     const node = this.nodes[Math.floor(Math.random() * this.nodes.length)];
     
     // Search adjacent tile within 2 steps
-    const dx = Math.floor(Math.random() * 5) - 2;
-    const dy = Math.floor(Math.random() * 5) - 2;
+    let dx, dy;
+    do {
+      dx = Math.floor(Math.random() * 5) - 2;
+      dy = Math.floor(Math.random() * 5) - 2;
+    } while (dx === 0 && dy === 0);
     
     const tx = node.x + dx;
     const ty = node.y + dy;
@@ -49,17 +52,25 @@ export class CorruptionSystem {
       // Do not corrupt water or existing decorations that collide
       if (map.baseGrid[idx] !== map.TILES.WATER && map.baseGrid[idx] !== map.TILES.CORRUPTED) {
         map.baseGrid[idx] = map.TILES.CORRUPTED;
+        if (map.invalidateCache) map.invalidateCache();
       }
     }
+  }
+
+  _distSq(x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return dx * dx + dy * dy;
   }
 
   // Purifies a circular radius around coordinates
   purify(cx, cy, radius, map) {
     let tilesCleaned = 0;
     
+    const rSq = radius * radius;
     for (let dy = -radius; dy <= radius; dy++) {
       for (let dx = -radius; dx <= radius; dx++) {
-        if (Math.hypot(dx, dy) > radius) continue;
+        if (dx * dx + dy * dy > rSq) continue;
         
         const tx = cx + dx;
         const ty = cy + dy;
@@ -67,8 +78,8 @@ export class CorruptionSystem {
         if (tx >= 0 && tx < this.width && ty >= 0 && ty < this.height) {
           const idx = ty * this.width + tx;
           if (map.baseGrid[idx] === map.TILES.CORRUPTED) {
-            // Restore back to grass
             map.baseGrid[idx] = map.TILES.GRASS;
+            if (map.invalidateCache) map.invalidateCache();
             tilesCleaned += 1;
           }
         }
@@ -76,7 +87,7 @@ export class CorruptionSystem {
     }
 
     // Remove any corruption nodes inside this purified area
-    this.nodes = this.nodes.filter(n => Math.hypot(n.x - cx, n.y - cy) > radius);
+    this.nodes = this.nodes.filter(n => this._distSq(n.x, n.y, cx, cy) > rSq);
 
     return tilesCleaned;
   }

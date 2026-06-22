@@ -3,6 +3,13 @@
 
 import { MAPS_CONFIG } from '../data/maps.js';
 
+// Shared tile sheet — all TileMap instances reuse this single Image
+const _sharedTileSheet = new Image();
+_sharedTileSheet.src = 'assets/images/backgrounds.png';
+_sharedTileSheet.onerror = () => console.warn('Failed to load tile sheet: assets/images/backgrounds.png');
+let _sharedTileSheetReady = false;
+_sharedTileSheet.onload = () => { _sharedTileSheetReady = true; };
+
 export class TileMap {
   constructor(mapId, tileSize) {
     const config = MAPS_CONFIG[mapId];
@@ -18,6 +25,8 @@ export class TileMap {
     this.theme = config.theme;
     this.type = config.type;
     this.warps = config.warps || [];
+    this.floorTile = config.floorTile || 480;
+    this.wallTile = config.wallTile || 464;
 
     // Grid arrays: base tiles (ground) and decoration tiles (obstacles/events)
     this.baseGrid = [];
@@ -52,13 +61,18 @@ export class TileMap {
       CROPS: 63,        // Farming crops
       FORGE: 368,       // Blacksmith anvil/furnace
       BOOKSHELF: 101,   // Hermitage bookshelf
-      SIGNBOARD: 24,    // GBA readable sign
-      CHEST: 323        // Chest / relic trunk
+      SIGNBOARD: 25,    // GBA readable sign (was 24, collides with TREE)
+      CHEST: 324        // Chest / relic trunk (was 323, collides with RUINED_COL)
     };
 
-    // Load GBA Sprite Sheet
-    this.tileSheet = new Image();
-    this.tileSheet.src = 'assets/images/backgrounds.png';
+    // Use shared tile sheet — no per-map Image allocation
+    this.tileSheet = _sharedTileSheet;
+
+    // Offscreen tile cache to avoid redrawing ~450 drawImage calls per frame
+    this._tileCacheCanvas = null;
+    this._tileCacheCtx = null;
+    this._cacheCamTileX = -1;
+    this._cacheCamTileY = -1;
 
     this.generateMap();
   }
@@ -77,7 +91,7 @@ export class TileMap {
         for (let x = 0; x < this.width; x++) {
           const idx = y * this.width + x;
           if (x === 0 || x === this.width - 1 || y === 0 || y === this.height - 1) {
-            this.decoGrid[idx] = this.DECOS.TEMPLE_WALL;
+            this.decoGrid[idx] = this.wallTile;
           }
         }
       }
@@ -111,7 +125,6 @@ export class TileMap {
           const idx = y * this.width + x;
           this.baseGrid[idx] = this.TILES.WATER;
         }
-        // Sand riverbanks
         this.baseGrid[y * this.width + (rx - 5)] = this.TILES.SAND;
         this.baseGrid[y * this.width + (rx + 5)] = this.TILES.SAND;
       }
@@ -127,29 +140,90 @@ export class TileMap {
       }
 
       // Place houses at clean locations
-      // Ashram (10x10)
       this.carveHouse(8, 20, 10, 8);
-      // Farmhouse (8x8)
       this.carveHouse(30, 24, 8, 6);
-      // Village Hut (8x8)
       this.carveHouse(52, 28, 8, 6);
 
       // Winding pathways
       this.carvePath(40, 70, 12, 25);
       this.carvePath(40, 70, 34, 29);
       this.carvePath(40, 70, 56, 33);
-      this.carvePath(40, 70, 40, 59); // south path
-      this.carvePath(40, 70, 40, 2);   // north path
+      this.carvePath(40, 70, 40, 59);
+      this.carvePath(40, 70, 40, 2);
 
-      // Farming Crops (large field)
+      // Village center square - stone floor around the well
+      for (let y = 32; y <= 38; y++) {
+        for (let x = 36; x <= 44; x++) {
+          this.baseGrid[y * this.width + x] = this.TILES.STONE;
+        }
+      }
+
+      // Well at square center
+      this.decoGrid[35 * this.width + 40] = this.DECOS.RUINED_COL;
+
+      // Farming Crops field
       for (let y = 12; y <= 18; y++) {
         for (let x = 44; x <= 52; x++) {
           this.decoGrid[y * this.width + x] = this.DECOS.CROPS;
         }
       }
 
-      // Well at square center
-      this.decoGrid[35 * this.width + 40] = this.DECOS.RUINED_COL;
+      // Trees framing the village
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          const idx = y * this.width + x;
+          if (this.baseGrid[idx] !== this.TILES.GRASS) continue;
+          if (this.decoGrid[idx] !== this.DECOS.EMPTY) continue;
+          if (this.ruinsGrid[idx] > 0) continue;
+          // Clusters of trees along edges and between buildings
+          const edgeDist = Math.min(x, this.width - x, y, this.height - y);
+          if (edgeDist < 3 && Math.random() < 0.6) {
+            this.decoGrid[idx] = this.DECOS.TREE;
+          }
+          // Scattered trees in open areas
+          if (Math.random() < 0.04) {
+            this.decoGrid[idx] = this.DECOS.TREE;
+          }
+        }
+      }
+
+      // Village entrance gate at south path
+      this.decoGrid[69 * this.width + 39] = this.DECOS.WALL;
+      this.decoGrid[69 * this.width + 41] = this.DECOS.WALL;
+      this.decoGrid[70 * this.width + 39] = this.DECOS.WALL;
+      this.decoGrid[70 * this.width + 41] = this.DECOS.WALL;
+      this.decoGrid[68 * this.width + 39] = this.DECOS.SIGNBOARD;
+      this.decoGrid[68 * this.width + 41] = this.DECOS.SIGNBOARD;
+
+      // Spawn landing (small stone area where player appears)
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          this.baseGrid[(70 + dy) * this.width + (40 + dx)] = this.TILES.STONE;
+        }
+      }
+      this.decoGrid[70 * this.width + 40] = this.DECOS.EMPTY;
+      this.decoGrid[69 * this.width + 40] = this.DECOS.EMPTY;
+      this.decoGrid[71 * this.width + 40] = this.DECOS.WALL;
+
+      // Entrance lantern posts
+      this.decoGrid[68 * this.width + 38] = this.DECOS.RUINED_COL;
+      this.decoGrid[68 * this.width + 42] = this.DECOS.RUINED_COL;
+      this.decoGrid[66 * this.width + 37] = this.DECOS.TREE;
+      this.decoGrid[66 * this.width + 43] = this.DECOS.TREE;
+      this.decoGrid[72 * this.width + 38] = this.DECOS.TREE;
+      this.decoGrid[72 * this.width + 42] = this.DECOS.TREE;
+
+      // Market stalls near center square
+      this.decoGrid[31 * this.width + 36] = this.DECOS.CHEST;
+      this.decoGrid[31 * this.width + 44] = this.DECOS.CHEST;
+      this.decoGrid[39 * this.width + 36] = this.DECOS.SIGNBOARD;
+      this.decoGrid[39 * this.width + 44] = this.DECOS.SIGNBOARD;
+
+      // Lanterns along main path
+      const lanternPositions = [[40, 55], [40, 60], [40, 65], [38, 33], [42, 33]];
+      for (const [lx, ly] of lanternPositions) {
+        this.decoGrid[ly * this.width + lx] = this.DECOS.RUINED_COL;
+      }
     } 
     
     else if (this.type === 'shrine') {
@@ -178,9 +252,6 @@ export class TileMap {
 
       // Fill rest with dense trees
       for (let i = 0; i < this.baseGrid.length; i++) {
-        const x = i % this.width;
-        const y = Math.floor(i / this.width);
-        
         const onPath = this.baseGrid[i] === this.TILES.DIRT;
         const inHouse = this.ruinsGrid[i] > 0;
         
@@ -359,6 +430,29 @@ export class TileMap {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return true;
     const idx = y * this.width + x;
     
+    // Allow walking on warp tiles (doorways/transitions)
+    const isWarp = this.warps.some(w => w.x === x && w.y === y);
+    if (isWarp) {
+      return false;
+    }
+
+    // Check if within the 3x3 shrine collision box
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = x - dx;
+        const ny = y - dy;
+        if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+          if (this.decoGrid[ny * this.width + nx] === this.DECOS.SHRINE) {
+            if (x === nx && y === ny + 1) {
+              // Walkable door/warp
+              continue;
+            }
+            return true;
+          }
+        }
+      }
+    }
+
     // Check water (unless it's a bridge)
     if (this.baseGrid[idx] === this.TILES.WATER && this.decoGrid[idx] !== this.DECOS.BRIDGE) {
       return true;
@@ -366,7 +460,13 @@ export class TileMap {
 
     // Check collision decos
     const deco = this.decoGrid[idx];
-    if (deco === this.DECOS.TREE || deco === this.DECOS.WALL || deco === this.DECOS.TEMPLE_WALL || deco === this.DECOS.RUINED_COL) {
+    if (
+      deco === this.DECOS.TREE || 
+      deco === this.DECOS.WALL || 
+      deco === this.DECOS.TEMPLE_WALL || 
+      deco === this.DECOS.RUINED_COL ||
+      deco === this.DECOS.CHEST
+    ) {
       return true;
     }
 
@@ -388,7 +488,7 @@ export class TileMap {
     ctx.drawImage(
       this.tileSheet,
       srcX, srcY, 16, 16, // source
-      dx, dy, this.tileSize, this.tileSize // destination
+      Math.round(dx), Math.round(dy), this.tileSize, this.tileSize // destination
     );
   }
 
@@ -397,7 +497,7 @@ export class TileMap {
       case this.TILES.WATER: return 54;
       case this.TILES.GRASS: return 1;
       case this.TILES.SAND: return 29;
-      case this.TILES.DIRT: return 38;
+      case this.TILES.DIRT: return this.type === 'interior' ? this.floorTile : 38;
       case this.TILES.STONE: return 33;
       case this.TILES.LAVA: return 367;
       case this.TILES.CORRUPTED: return 2512;
@@ -406,90 +506,107 @@ export class TileMap {
   }
 
   draw(ctx, camera) {
-    ctx.imageSmoothingEnabled = false;
+    // imageSmoothingEnabled set once in game.js constructor
 
-    const startX = Math.floor(camera.x / this.tileSize);
-    const startY = Math.floor(camera.y / this.tileSize);
-    const endX = Math.ceil((camera.x + camera.width) / this.tileSize);
-    const endY = Math.ceil((camera.y + camera.height) / this.tileSize);
+    const camTileX = Math.floor(camera.x / this.tileSize);
+    const camTileY = Math.floor(camera.y / this.tileSize);
 
-    for (let y = startY; y <= endY; y++) {
-      for (let x = startX; x <= endX; x++) {
-        if (x < 0 || x >= this.width || y < 0 || y >= this.height) continue;
-        
-        const idx = y * this.width + x;
-        const screenPos = camera.toScreenSpace(x, y);
-        
-        // 1. Draw Base Ground Layer
-        const tile = this.baseGrid[idx];
-        const tileIndex = this.getTileIndexForType(tile);
-        this.drawGBATile(ctx, tileIndex, screenPos.x, screenPos.y);
+    const tilesW = Math.ceil(camera.width / this.tileSize) + 2;
+    const tilesH = Math.ceil(camera.height / this.tileSize) + 2;
 
-        // 2. Draw House Structures Overlays
-        const structure = this.ruinsGrid[idx];
-        if (structure === 1) { // Roof (red roof tile index 624)
-          this.drawGBATile(ctx, 624, screenPos.x, screenPos.y);
-        } else if (structure === 3) { // Wall (brick wall tile index 342)
-          this.drawGBATile(ctx, 342, screenPos.x, screenPos.y);
-        }
+    if (!this._tileCacheCanvas || camTileX !== this._cacheCamTileX || camTileY !== this._cacheCamTileY) {
+      this._cacheCamTileX = camTileX;
+      this._cacheCamTileY = camTileY;
 
-        // 3. Draw Decoration Layer
-        const deco = this.decoGrid[idx];
-        if (deco !== this.DECOS.EMPTY) {
-          this.drawDeco(ctx, deco, screenPos.x, screenPos.y);
+      const cw = tilesW * this.tileSize;
+      const ch = tilesH * this.tileSize;
+
+      if (!this._tileCacheCanvas) {
+        this._tileCacheCanvas = document.createElement('canvas');
+        this._tileCacheCtx = this._tileCacheCanvas.getContext('2d');
+        this._tileCacheCtx.imageSmoothingEnabled = false;
+      }
+      if (this._tileCacheCanvas.width !== cw || this._tileCacheCanvas.height !== ch) {
+        this._tileCacheCanvas.width = cw;
+        this._tileCacheCanvas.height = ch;
+      }
+
+      const cctx = this._tileCacheCtx;
+      // imageSmoothingEnabled set once at creation
+      cctx.clearRect(0, 0, cw, ch);
+
+      for (let y = 0; y < tilesH; y++) {
+        for (let x = 0; x < tilesW; x++) {
+          const mapX = camTileX + x;
+          const mapY = camTileY + y;
+          if (mapX < 0 || mapX >= this.width || mapY < 0 || mapY >= this.height) continue;
+
+          const idx = mapY * this.width + mapX;
+          const px = x * this.tileSize;
+          const py = y * this.tileSize;
+
+          const tile = this.baseGrid[idx];
+          this.drawGBATile(cctx, this.getTileIndexForType(tile), px, py);
+
+          const structure = this.ruinsGrid[idx];
+          if (structure === 1) {
+            this.drawGBATile(cctx, 624, px, py);
+          } else if (structure === 3) {
+            this.drawGBATile(cctx, 464, px, py);
+          }
+
+          const deco = this.decoGrid[idx];
+          if (deco !== this.DECOS.EMPTY) {
+            this.drawDeco(cctx, deco, px, py);
+          }
         }
       }
     }
+
+    const offsetX = Math.round(-(camera.x - camTileX * this.tileSize));
+    const offsetY = Math.round(-(camera.y - camTileY * this.tileSize));
+    ctx.drawImage(this._tileCacheCanvas, offsetX, offsetY);
+  }
+
+  invalidateCache() {
+    this._cacheCamTileX = -1;
+    this._cacheCamTileY = -1;
   }
 
   drawDeco(ctx, deco, px, py) {
-    switch(deco) {
-      case this.DECOS.TREE:
-        this.drawGBATile(ctx, 24, px, py);
-        break;
-      case this.DECOS.WALL:
-        this.drawGBATile(ctx, 74, px, py);
-        break;
-      case this.DECOS.TEMPLE_WALL:
-        this.drawGBATile(ctx, 342, px, py);
-        break;
-      case this.DECOS.BRIDGE:
-        this.drawGBATile(ctx, 140, px, py);
-        break;
-      case this.DECOS.ALTAR:
-        this.drawGBATile(ctx, 275, px, py);
-        break;
-      case this.DECOS.SHRINE:
-        this.drawGBATile(ctx, 624, px, py);
-        break;
-      case this.DECOS.RUINED_COL:
-        this.drawGBATile(ctx, 323, px, py);
-        break;
-      case this.DECOS.PORTAL:
-        this.drawGBATile(ctx, 1254, px, py);
-        break;
-      case this.DECOS.CROPS:
-        this.drawGBATile(ctx, 63, px, py);
-        break;
-      case this.DECOS.FORGE:
-        this.drawGBATile(ctx, 368, px, py);
-        break;
-      case this.DECOS.BOOKSHELF:
-        this.drawGBATile(ctx, 101, px, py);
-        break;
+    if (deco === this.DECOS.SHRINE) {
+      const ts = this.tileSize;
+      // Draw 3x3 red-roof building (Cols 1,2,3 of Rows 5,6,7 starting at 307)
+      // Row 5: 307, 308, 309
+      this.drawGBATile(ctx, 307, px - ts, py - ts);
+      this.drawGBATile(ctx, 308, px, py - ts);
+      this.drawGBATile(ctx, 309, px + ts, py - ts);
+      // Row 6: 368, 369, 370
+      this.drawGBATile(ctx, 368, px - ts, py);
+      this.drawGBATile(ctx, 369, px, py);
+      this.drawGBATile(ctx, 370, px + ts, py);
+      // Row 7: 429, 430, 431
+      this.drawGBATile(ctx, 429, px - ts, py + ts);
+      this.drawGBATile(ctx, 430, px, py + ts);
+      this.drawGBATile(ctx, 431, px + ts, py + ts);
+    } else {
+      this.drawGBATile(ctx, deco, px, py);
     }
   }
 
   updateEpochOverlays(epochId) {
-    let targetSrc = 'assets/images/backgrounds_vibrant.png';
+    let targetSrc = 'assets/images/backgrounds.png';
     if (epochId >= 6) {
       targetSrc = 'assets/images/backgrounds_corrupted.png';
     } else if (epochId >= 4) {
       targetSrc = 'assets/images/backgrounds_autumn.png';
     }
     
-    if (!this.tileSheet.src.endsWith(targetSrc)) {
+    const currentSrc = this.tileSheet.src;
+    if (currentSrc.indexOf(targetSrc) === -1) {
       this.tileSheet.src = targetSrc;
+      this._cacheCamTileX = -1;
+      this._cacheCamTileY = -1;
     }
   }
 }

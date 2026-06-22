@@ -19,8 +19,12 @@ export const VRITTI_POOL = [
 
 export class VrittiSystem {
   constructor(uiElements) {
-    this.uiOverlay = uiElements.overlay;
-    this.uiText = uiElements.text;
+    this.uiOverlay = uiElements && uiElements.overlay ? uiElements.overlay : null;
+    this.uiText = uiElements && uiElements.text ? uiElements.text : null;
+    
+    if (!this.uiOverlay || !this.uiText) {
+      console.warn('VrittiSystem: missing DOM elements');
+    }
     
     this.active = false;
     this.timer = 0;
@@ -31,6 +35,7 @@ export class VrittiSystem {
 
   trigger(onComplete, onInterrupt) {
     if (this.active) return;
+    if (!this.uiOverlay || !this.uiText) return;
     
     this.active = true;
     this.timer = 0;
@@ -38,7 +43,9 @@ export class VrittiSystem {
     this.onInterrupt = onInterrupt;
 
     // Pick random thought
-    const thought = VRITTI_POOL[Math.floor(Math.random() * VRITTI_POOL.length)];
+    const pool = VRITTI_POOL;
+    if (pool.length === 0) return;
+    const thought = pool[Math.floor(Math.random() * pool.length)];
     this.uiText.innerText = `"${thought}"`;
     this.uiOverlay.classList.remove('hidden');
   }
@@ -66,7 +73,9 @@ export class VrittiSystem {
 
   close() {
     this.active = false;
-    this.uiOverlay.classList.add('hidden');
+    if (this.uiOverlay) this.uiOverlay.classList.add('hidden');
+    this.onComplete = null;
+    this.onInterrupt = null;
   }
 }
 export default VrittiSystem;

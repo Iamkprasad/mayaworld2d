@@ -19,7 +19,7 @@ export class SamsaraSystem {
   }
 
   triggerDreamingState(player) {
-    // 1. Write the current life to the lineage log
+    this._lastPlayerAge = player.age;
     let dominantVidya = 'None';
     let maxLvl = 0;
     for (const key in player.vidyas) {
@@ -93,11 +93,17 @@ export class SamsaraSystem {
       this.journal.saveToStorage();
     }
 
-    // Determine the next Epoch based on age of death
-    // (Rules: die young jumps +2, die old stays same or +1)
     const currentEpoch = this.journal.data.currentEpoch;
-    let nextEpoch = currentEpoch + 1;
-    if (nextEpoch > 7) nextEpoch = 1; // loop back or stay at 7
+    let nextEpoch = currentEpoch;
+    const age = this._lastPlayerAge || 30;
+    if (age < 20) {
+      nextEpoch = Math.min(7, currentEpoch + 2);
+    } else if (age >= 50) {
+      nextEpoch = currentEpoch;
+    } else {
+      nextEpoch = currentEpoch + 1;
+    }
+    if (nextEpoch > 7) nextEpoch = 1;
 
     this.journal.data.currentEpoch = nextEpoch;
     this.journal.saveToStorage();

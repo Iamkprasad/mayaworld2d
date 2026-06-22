@@ -29,8 +29,8 @@ export const MAPS_CONFIG = {
     theme: "vibrant",
     type: "interior",
     defaultSpawn: { x: 10, y: 18 },
-    floorTile: 38, // wood floor
-    wallTile: 342, // brick wall
+    floorTile: 480, // wood floor
+    wallTile: 464, // brick wall
     warps: [
       { x: 10, y: 19, targetMapId: 1, targetX: 12, targetY: 25, type: "door" }
     ]
@@ -43,8 +43,8 @@ export const MAPS_CONFIG = {
     theme: "vibrant",
     type: "interior",
     defaultSpawn: { x: 8, y: 14 },
-    floorTile: 38,
-    wallTile: 342,
+    floorTile: 480,
+    wallTile: 464,
     warps: [
       { x: 8, y: 15, targetMapId: 1, targetX: 34, targetY: 29, type: "door" }
     ]
@@ -57,8 +57,8 @@ export const MAPS_CONFIG = {
     theme: "vibrant",
     type: "interior",
     defaultSpawn: { x: 8, y: 14 },
-    floorTile: 38,
-    wallTile: 342,
+    floorTile: 480,
+    wallTile: 464,
     warps: [
       { x: 8, y: 15, targetMapId: 1, targetX: 56, targetY: 33, type: "door" }
     ]
@@ -99,8 +99,8 @@ export const MAPS_CONFIG = {
     theme: "vibrant",
     type: "interior",
     defaultSpawn: { x: 10, y: 18 },
-    floorTile: 38,
-    wallTile: 342,
+    floorTile: 480,
+    wallTile: 464,
     warps: [
       { x: 10, y: 19, targetMapId: 6, targetX: 16, targetY: 22, type: "door" }
     ]
@@ -154,7 +154,7 @@ export const MAPS_CONFIG = {
     type: "interior",
     defaultSpawn: { x: 12, y: 22 },
     floorTile: 33, // stone/basalt
-    wallTile: 342,
+    wallTile: 464,
     warps: [
       { x: 12, y: 23, targetMapId: 10, targetX: 60, targetY: 26, type: "door" }
     ]
@@ -256,8 +256,8 @@ export const MAPS_CONFIG = {
     theme: "vibrant",
     type: "interior",
     defaultSpawn: { x: 8, y: 14 },
-    floorTile: 38,
-    wallTile: 342,
+    floorTile: 480,
+    wallTile: 464,
     warps: [
       { x: 8, y: 15, targetMapId: 18, targetX: 30, targetY: 22, type: "door" }
     ]

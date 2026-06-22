@@ -103,16 +103,20 @@ export const VIDYA_METADATA = {
 
 export class VidyaSystem {
   static teach(player, vidyaKey, level) {
-    // Apply learning rate modifier
-    const rate = player.affinities[vidyaKey] || 1.0;
-    
-    // Set level directly
     player.vidyas[vidyaKey] = level;
     player.curiosity = `Practicing ${VIDYA_METADATA[vidyaKey].name}`;
+    if (typeof player.updateTotalVidyaLevels === 'function') {
+      player.updateTotalVidyaLevels();
+    }
     
     // Check if player has unlocked Level 3 for Dhanur, which permanently boosts player speed
     if (vidyaKey === 'dhanur' && level === 3) {
       player.speed = 0.12; // Speed boost
+    }
+    
+    // Check if player has mastered Brahma Vidya, which unlocks the true name
+    if (vidyaKey === 'brahma' && level >= 3) {
+      player.trueNameKnown = true;
     }
   }
 

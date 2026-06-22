@@ -1,31 +1,44 @@
-// 2D Camera viewport scroll tracker
+// Fixed-screen Camera - Inspired by Pokemon Emerald
+// Screen only shifts when player reaches boundaries
 
 export class Camera {
   constructor(width, height, mapWidth, mapHeight, tileSize) {
     this.x = 0;
     this.y = 0;
-    this.width = width;       // Viewport width in pixels
-    this.height = height;     // Viewport height in pixels
-    this.mapWidth = mapWidth;   // Map width in tiles
-    this.mapHeight = mapHeight; // Map height in tiles
-    this.tileSize = tileSize;   // Tile size in pixels (e.g. 16)
-    
+    this.width = width;
+    this.height = height;
+    this.mapWidth = mapWidth;
+    this.mapHeight = mapHeight;
+    this.tileSize = tileSize;
+
     this.mapWidthPx = mapWidth * tileSize;
     this.mapHeightPx = mapHeight * tileSize;
+
+    this.screenWidthTiles = Math.ceil(width / tileSize);
+    this.screenHeightTiles = Math.ceil(height / tileSize);
+    this._centered = false;
   }
 
-  follow(playerX, playerY, lerpFactor = 0.1) {
-    // Center of player (pixel space)
-    const targetX = playerX * this.tileSize - this.width / 2;
-    const targetY = playerY * this.tileSize - this.height / 2;
+  update(playerX, playerY) {
+    let targetX = playerX * this.tileSize - this.width / 2;
+    let targetY = playerY * this.tileSize - this.height / 2;
 
-    // Linear interpolation
-    this.x += (targetX - this.x) * lerpFactor;
-    this.y += (targetY - this.y) * lerpFactor;
+    targetX = Math.max(0, Math.min(this.mapWidthPx - this.width, targetX));
+    targetY = Math.max(0, Math.min(this.mapHeightPx - this.height, targetY));
 
-    // Constrain camera bounds to map boundaries
-    this.x = Math.max(0, Math.min(this.mapWidthPx - this.width, this.x));
-    this.y = Math.max(0, Math.min(this.mapHeightPx - this.height, this.y));
+    if (!this._centered) {
+      this._centered = true;
+      this.x = targetX;
+      this.y = targetY;
+      return;
+    }
+
+    this.x = targetX;
+    this.y = targetY;
+  }
+
+  follow(playerX, playerY, lerpFactor) {
+    this.update(playerX, playerY);
   }
 
   // Convert map coordinates to screen drawing coordinates
@@ -45,5 +58,17 @@ export class Camera {
       screenPos.y >= -this.tileSize &&
       screenPos.y <= this.height
     );
+  }
+
+  // Get current screen tile boundaries
+  getScreenBounds() {
+    const startX = Math.floor(this.x / this.tileSize);
+    const startY = Math.floor(this.y / this.tileSize);
+    const endX = startX + this.screenWidthTiles;
+    const endY = startY + this.screenHeightTiles;
+
+    return {
+      startX, startY, endX, endY
+    };
   }
 }

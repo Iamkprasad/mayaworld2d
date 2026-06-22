@@ -1,17 +1,20 @@
 // Seeker's Journal & Serialization Save System
 
 export class SeekerJournal {
+  static SCHEMA_VERSION = 1;
+
   constructor() {
     this.saveKey = 'mayaworld_seeker_save';
     
     // Cosmic variables (carried across lives)
     this.data = {
+      version: SeekerJournal.SCHEMA_VERSION,
       livesCount: 1,
       karmaLight: 0,
       karmaShadow: 0,
       currentEpoch: 1,
-      dreamFragments: [], // Collected IDs
-      lineage: [],        // Array of past life summaries
+      dreamFragments: [],
+      lineage: [],
       hasAsthra: false,
       relicRage: false,
       relicPride: false,
@@ -21,7 +24,8 @@ export class SeekerJournal {
       maunaMeditationDone: false,
       maunaFleeDone: false,
       maunaSilenceDone: false,
-      maunaUnlocked: false
+      maunaUnlocked: false,
+      trueNameKnown: false
     };
 
     this.loadFromStorage();
@@ -32,9 +36,18 @@ export class SeekerJournal {
       const saved = localStorage.getItem(this.saveKey);
       if (saved) {
         this.data = { ...this.data, ...JSON.parse(saved) };
+        this._migrateSaveData();
       }
     } catch (e) {
       console.warn("localStorage is not available. Using in-memory storage instead.", e);
+    }
+  }
+
+  _migrateSaveData() {
+    const v = this.data.version || 0;
+    if (v < SeekerJournal.SCHEMA_VERSION) {
+      this.data.version = SeekerJournal.SCHEMA_VERSION;
+      this.saveToStorage();
     }
   }
 
@@ -76,8 +89,7 @@ export class SeekerJournal {
   // Export Save File (.sav text download)
   exportSave() {
     const jsonStr = JSON.stringify(this.data);
-    // Basic base64 encryption to make it look like a binary save file
-    const encoded = btoa(jsonStr);
+    const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
     
     const blob = new Blob([encoded], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -95,12 +107,12 @@ export class SeekerJournal {
   // Import Save File (.sav text upload)
   importSave(fileText) {
     try {
-      const decoded = atob(fileText.trim());
+      const decoded = decodeURIComponent(escape(atob(fileText.trim())));
       const parsed = JSON.parse(decoded);
       
-      // Basic validation
-      if (parsed.livesCount !== undefined && parsed.lineage !== undefined) {
-        this.data = parsed;
+      if (this._validateSaveData(parsed)) {
+        this.data = { ...this.data, ...parsed };
+        this._migrateSaveData();
         this.saveToStorage();
         return true;
       }
@@ -110,8 +122,21 @@ export class SeekerJournal {
     return false;
   }
 
+  _validateSaveData(parsed) {
+    if (typeof parsed !== 'object' || parsed === null) return false;
+    if (typeof parsed.livesCount !== 'number' || parsed.livesCount < 1 || parsed.livesCount > 9999) return false;
+    if (!Array.isArray(parsed.lineage)) return false;
+    if (typeof parsed.karmaLight !== 'number' || typeof parsed.karmaShadow !== 'number') return false;
+    if (typeof parsed.currentEpoch !== 'number' || parsed.currentEpoch < 1 || parsed.currentEpoch > 7) return false;
+    if (!Array.isArray(parsed.dreamFragments)) return false;
+    if (typeof parsed.hasAsthra !== 'boolean') parsed.hasAsthra = false;
+    if (typeof parsed.forgeProgress !== 'number') parsed.forgeProgress = 0;
+    return true;
+  }
+
   resetAll() {
     this.data = {
+      version: SeekerJournal.SCHEMA_VERSION,
       livesCount: 1,
       karmaLight: 0,
       karmaShadow: 0,
@@ -127,11 +152,14 @@ export class SeekerJournal {
       maunaMeditationDone: false,
       maunaFleeDone: false,
       maunaSilenceDone: false,
-      maunaUnlocked: false
+      maunaUnlocked: false,
+      trueNameKnown: false
     };
     try {
       localStorage.removeItem(this.saveKey);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Failed to clear localStorage:', e);
+    }
   }
 }
 export default SeekerJournal;

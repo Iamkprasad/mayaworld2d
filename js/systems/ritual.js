@@ -25,7 +25,7 @@ export class RitualSystem {
     }
 
     // 4. True Name known (10 points)
-    const knowsTrueName = player.karmaBalance > 50; // Simple check representing lore progress
+    const knowsTrueName = player.trueNameKnown;
     if (knowsTrueName) {
       resonance += 10;
     }
@@ -39,7 +39,7 @@ export class RitualSystem {
     return {
       score: resonance,
       hasMauna,
-      hasAsthra,
+      hasAsthra: player.hasAsthra,
       knowsTrueName,
       isEclipse
     };

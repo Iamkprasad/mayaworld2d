@@ -21,8 +21,8 @@ export class GameClock {
   update(deltaTime) {
     this.timeAccumulator += deltaTime;
     
-    if (this.timeAccumulator >= this.minuteDurationMs) {
-      this.timeAccumulator = 0;
+    while (this.timeAccumulator >= this.minuteDurationMs) {
+      this.timeAccumulator -= this.minuteDurationMs;
       this.tickMinute();
     }
   }

@@ -51,6 +51,7 @@ class GameApp {
   constructor() {
     this.canvas = document.getElementById('game-screen');
     this.ctx = this.canvas.getContext('2d');
+    this.ctx.imageSmoothingEnabled = false;
     
     // Preload location and battle graphics
     this.preloadedImages = {};
@@ -86,11 +87,9 @@ class GameApp {
     this.corruption = new CorruptionSystem(80, 80);
     this.samsara = new SamsaraSystem(this.journal, (aff, ep) => this.onRebirth(aff, ep));
 
-    // Build map cache for all 22 maps
+    // Build map cache lazily — only Map 1 at startup, others on demand
     this.mapCache = {};
-    for (const mapId in MAPS_CONFIG) {
-      this.mapCache[mapId] = new TileMap(Number(mapId), this.tileSize);
-    }
+    this.mapCache[1] = new TileMap(1, this.tileSize);
     this.activeMapId = 1;
     
     // UI elements lookup for Vritti
@@ -139,8 +138,16 @@ class GameApp {
     requestAnimationFrame((t) => this.loop(t));
   }
 
+  _ensureMap(mapId) {
+    if (!this.mapCache[mapId]) {
+      this.mapCache[mapId] = new TileMap(mapId, this.tileSize);
+    }
+    return this.mapCache[mapId];
+  }
+
   restartLife(affinityKey = null, epochId = 1) {
     this.activeMapId = 1;
+    this._ensureMap(1);
     
     // Update map overlays for all cached maps
     for (const mapId in this.mapCache) {
@@ -874,11 +881,11 @@ class GameApp {
     this.corruption.spawnNode(38, 68);
     this.corruption.spawnNode(42, 68);
 
-    // Shake console screen
+    // Shake console screen (lightweight class toggle instead of CSS animation)
     const frame = document.getElementById('emu-screen-container') || document.getElementById('screen-frame');
     if (frame) {
-      frame.style.animation = 'flash 0.1s 10 alternate';
-      setTimeout(() => { frame.style.animation = ''; }, 1000);
+      frame.classList.add('screen-shake');
+      setTimeout(() => { frame.classList.remove('screen-shake'); }, 500);
     }
   }
 
@@ -920,7 +927,7 @@ class GameApp {
   }
 
   loop(timestamp) {
-    const deltaTime = timestamp - this.lastTime;
+    const deltaTime = Math.min(timestamp - this.lastTime, 100);
     this.lastTime = timestamp;
 
     // Apply speed scaling multiplier
@@ -945,7 +952,7 @@ class GameApp {
           
           // Switch map
           this.activeMapId = ts.warp.targetMapId;
-          this.map = this.mapCache[this.activeMapId];
+          this.map = this._ensureMap(this.activeMapId);
           
           // Move player
           this.player.x = ts.warp.targetX;
@@ -1031,7 +1038,7 @@ class GameApp {
 
       // 5. NPC schedule actions
       this.npcs.forEach(npc => {
-        npc.update(deltaTime, this.clock, this.mayasurAttackActive, this.journal.data.currentEpoch);
+        npc.update(deltaTime, this.clock, this.mayasurAttackActive, this.journal.data.currentEpoch, this.map);
       });
 
       // 6. Camera follows player
@@ -1076,21 +1083,9 @@ class GameApp {
     this.vfxTimer = 0;
   }
 
-  // Ambient particle system for atmosphere
+  // Ambient particle system for atmosphere (disabled for performance)
   initAmbientParticles() {
     this.ambientParticles = [];
-    for (let i = 0; i < 30; i++) {
-      this.ambientParticles.push({
-        x: Math.random() * this.canvas.width,
-        y: Math.random() * this.canvas.height,
-        size: 1 + Math.random() * 2.5,
-        speedX: (Math.random() - 0.5) * 0.3,
-        speedY: -0.2 - Math.random() * 0.5,
-        opacity: 0.15 + Math.random() * 0.35,
-        phase: Math.random() * Math.PI * 2,
-        type: Math.random() < 0.6 ? 'firefly' : 'leaf'
-      });
-    }
   }
 
   updateAmbientParticles(deltaTime) {
@@ -1444,14 +1439,7 @@ class GameApp {
     // 4. Render Active Overworld VFX (Meditation/purifications)
     this.renderVFX(null);
 
-    // 5. Draw HUD metrics overlay (Day/night indicators, time, age)
-    this.ctx.fillStyle = 'rgba(11,26,22,0.88)';
-    this.ctx.fillRect(8, 8, 240, 32);
-    this.ctx.font = '14px "Outfit"';
-    this.ctx.fillStyle = '#e0f2ed';
-    this.ctx.fillText(this.clock.getTimeString(), 16, 28);
-
-    // 6. Draw Transition Mask
+    // 5. Draw Transition Mask
     if (this.state === 'transition' && this.transitionState) {
       const ts = this.transitionState;
       let opacity = 0;
