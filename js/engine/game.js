@@ -105,6 +105,8 @@ class GameApp {
     
     // State machine: 'playing', 'dialogue', 'menu', 'dreaming', 'ending', 'battle'
     this.state = 'playing';
+    this.gameAct = 1;          // Story progression act (1-6)
+    this.tutorialStep = 0;     // Tutorial popup progress (0 = not started)
     
     // Dialogue management
     this.activeDialogue = null;
@@ -244,6 +246,8 @@ class GameApp {
 
   startGameFromIntro() {
     this.state = 'playing';
+    this.gameAct = 1;
+    this.tutorialStep = 0;
     const introOverlay = document.getElementById('intro-overlay');
     if (introOverlay) {
       introOverlay.classList.add('hidden');
@@ -252,6 +256,24 @@ class GameApp {
     if (led) {
       led.classList.remove('low-batt');
       led.classList.add('active');
+    }
+    // Begin Act I tutorial sequence
+    this.queueDialogue("Journal", ["Movement: Arrow keys or WASD. Z to interact. X for Agni Seal.", "Enter to meditate. Shift opens your Journal.", "Find the villagers and learn about the Sages."]);
+  }
+
+  advanceAct(newAct) {
+    if (newAct <= this.gameAct) return;
+    this.gameAct = newAct;
+    if (newAct === 2) {
+      this.queueDialogue("Narrator", ["Act II: The First Flame. Seek Bhrigu in the north campfire grove."]);
+    } else if (newAct === 3) {
+      this.queueDialogue("Narrator", ["Act III: The Nine Disciplines. The world opens before you. Seek the Sages."]);
+    } else if (newAct === 4) {
+      this.queueDialogue("Narrator", ["Act IV: The Relics of Tamas. Gather the fragments of the Tenth Sage's power."]);
+    } else if (newAct === 5) {
+      this.queueDialogue("Narrator", ["Act V: The True Name. Seek Vashistha when you are ready to speak it."]);
+    } else if (newAct === 6) {
+      this.queueDialogue("Narrator", ["Act VI: The Final Ritual. Stand at the Altar of Vows during the Eclipse."]);
     }
   }
 
@@ -516,6 +538,8 @@ class GameApp {
     const deco = this.map.decoGrid[targetY * this.map.width + targetX];
     if (deco === this.map.DECOS.ALTAR) {
       this.attemptRitual();
+    } else if (deco === this.map.DECOS.CHEST) {
+      this.collectRelic("chest");
     } else if (deco === this.map.DECOS.PORTAL) {
       this.collectRelic("Volcano");
     } else if (deco === this.map.DECOS.SHRINE) {
@@ -532,15 +556,43 @@ class GameApp {
   collectRelic(zoneName) {
     if (zoneName === "Volcano" && !this.journal.data.relicRage) {
       this.journal.data.relicRage = true;
-      this.journal.collectDreamFragment(1); // Collect dream
+      this.journal.collectDreamFragment(1);
       this.journal.saveToStorage();
+      if (this.gameAct < 4) this.advanceAct(4);
       this.queueDialogue("Relic System", ["You found the Relic of Rage! It carries a heavy, pulsing volcanic heat. Bring it to Daksha."]);
+    } else if (zoneName === "chest") {
+      if (this.activeMapId === 17 && !this.journal.data.relicPride) {
+        const hour = this.clock ? this.clock.hour : 12;
+        if (hour >= 18 && hour <= 19) {
+          this.journal.data.relicPride = true;
+          this.journal.collectDreamFragment(3);
+          this.journal.saveToStorage();
+          if (this.gameAct < 4) this.advanceAct(4);
+          this.queueDialogue("Relic System", ["You found the Relic of Pride! It shimmers with ancient arrogance. Bring it to Daksha."]);
+        } else {
+          this.queueDialogue("Tidal Ruins", ["The chest is sealed by the tide. Return between 18:00 and 19:00 when the waters recede."]);
+        }
+      } else if (this.activeMapId === 20 && !this.journal.data.relicDesire) {
+        this.journal.data.relicDesire = true;
+        this.journal.collectDreamFragment(4);
+        this.journal.saveToStorage();
+        if (this.gameAct < 4) this.advanceAct(4);
+        this.queueDialogue("Relic System", ["You found the Relic of Desire! It pulses with a longing that is not your own. Bring it to Daksha."]);
+      }
+    }
+    // Check if all 3 relics collected → Act V
+    if (this.journal.data.relicRage && this.journal.data.relicPride && this.journal.data.relicDesire) {
+      if (this.gameAct === 4) this.advanceAct(5);
     }
   }
 
   attemptRitual() {
     const res = RitualSystem.calculateResonance(this.player, this.clock);
     const ending = RitualSystem.getEnding(res);
+
+    // Advance story when ritual is first attempted during eclipse
+    const isEclipse = this.clock && this.clock.eclipseActive;
+    if (isEclipse && this.gameAct < 6) this.advanceAct(6);
 
     if (ending.id === 'unready') {
       this.queueDialogue("ALTAR OF VOWS", [ending.text]);
@@ -610,6 +662,7 @@ class GameApp {
         this.queueDialogue(npc.name, [db.meet, db.teachLevel1]);
         this.dialogueQueue.push(() => {
           VidyaSystem.teach(this.player, npc.dialogueKey, 1);
+          if (this.gameAct === 1) this.advanceAct(2);
         });
       } else if (currentLevel === 1) {
         // Advance to Level 2
@@ -921,6 +974,24 @@ class GameApp {
     document.getElementById('stat-age').innerText = this.player ? this.player.age : 0;
     document.getElementById('stat-breath').innerText = this.player ? `${Math.ceil(this.player.breath)}/260` : "0/260";
     
+    // Persistent gameplay HUD
+    if (this.player) {
+      const hud = document.getElementById('game-hud');
+      if (hud) {
+        hud.classList.toggle('hidden', this.state !== 'playing' && this.state !== 'transition');
+        document.getElementById('hud-age-value').innerText = this.player.age;
+        const breathPct = Math.max(0, Math.min(100, (this.player.breath / this.player.breathMax) * 100));
+        document.getElementById('hud-breath-fill').style.width = breathPct + '%';
+        document.getElementById('hud-breath-text').innerText = `${Math.ceil(this.player.breath)}/${this.player.breathMax}`;
+        const totalLight = this.journal.data.karmaLight + this.player.karmaLight;
+        const totalShadow = this.journal.data.karmaShadow + this.player.karmaShadow;
+        document.getElementById('hud-karma-light-val').innerText = totalLight;
+        document.getElementById('hud-karma-shadow-val').innerText = totalShadow;
+        const actNames = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
+        document.getElementById('hud-act-value').innerText = actNames[this.gameAct] || 'I';
+      }
+    }
+
     // Apply Tint class to match clock hour
     const tintEl = document.getElementById('screen-tint');
     tintEl.className = this.clock.getTintClass();
@@ -1007,6 +1078,9 @@ class GameApp {
     if (this.state === 'playing') {
       // 1. Clock Ticks
       this.clock.update(deltaTime);
+
+      // 1b. Vritti thought timer
+      this.vritti.update(deltaTime);
 
       // 2. Input handling (WASD / Arrows)
       let dx = 0;

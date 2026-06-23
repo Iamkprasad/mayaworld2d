@@ -116,7 +116,7 @@ export class Player {
         this.walkFrame = 0; // Standing still
         
         // Deduct breath
-        this.deductBreath(0.1);
+        this.deductBreath(1.0);
       }
     } else {
       this.walkFrame = 0;

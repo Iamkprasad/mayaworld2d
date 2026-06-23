@@ -353,47 +353,55 @@ export function createCiviliansForMap(mapId) {
   const c = [];
   
   if (mapId === 1) { // Suryanagar Village Square
-    c.push(new NPC(201, 'civilian', 'Reva', 34, 28, {
+    c.push(new NPC(201, 'civilian', 'Reva', 30, 70, {
       profession: 'farmer',
       dialogueKey: 'farmer',
       imagePoss: { x: 1, y: 0 },
       schedule: {
-        6: { x: 48, y: 15, state: 'working' },  // crop fields
-        17: { x: 34, y: 28, state: 'idle' },
-        19: { x: 34, y: 28, state: 'sleeping' }
+        6: { x: 30, y: 70, state: 'working' },  // farmland
+        12: { state: 'idle' },                   // afternoon wandering
+        17: { x: 40, y: 40, state: 'idle' },    // village centre
+        19: { x: 33, y: 72, state: 'sleeping' },
+        22: { x: 33, y: 72, state: 'sleeping' }
       }
     }));
 
-    c.push(new NPC(202, 'civilian', 'Deva', 40, 36, {
+    c.push(new NPC(202, 'civilian', 'Deva', 55, 55, {
       profession: 'potter',
       dialogueKey: 'potter',
       imagePoss: { x: 2, y: 0 },
       schedule: {
-        6: { x: 42, y: 35, state: 'working' },
-        17: { x: 40, y: 36, state: 'idle' },
-        19: { x: 40, y: 36, state: 'sleeping' }
+        6: { x: 55, y: 55, state: 'working' },
+        12: { state: 'idle' },
+        17: { x: 40, y: 40, state: 'idle' },
+        19: { x: 53, y: 57, state: 'sleeping' },
+        22: { x: 53, y: 57, state: 'sleeping' }
       }
     }));
 
-    c.push(new NPC(203, 'civilian', 'Kala', 56, 32, {
+    c.push(new NPC(203, 'civilian', 'Kala', 20, 30, {
       profession: 'weaver',
       dialogueKey: 'weaver',
       imagePoss: { x: 3, y: 0 },
       schedule: {
-        6: { x: 62, y: 34, state: 'working' },
-        17: { x: 56, y: 32, state: 'idle' },
-        19: { x: 56, y: 32, state: 'sleeping' }
+        6: { x: 20, y: 30, state: 'working' },
+        12: { state: 'idle' },
+        17: { x: 40, y: 40, state: 'idle' },
+        19: { x: 18, y: 32, state: 'sleeping' },
+        22: { x: 18, y: 32, state: 'sleeping' }
       }
     }));
 
-    c.push(new NPC(204, 'civilian', 'Hari', 43, 30, {
+    c.push(new NPC(204, 'civilian', 'Hari', 60, 20, {
       profession: 'trader',
       dialogueKey: 'trader',
       imagePoss: { x: 0, y: 0 },
       schedule: {
-        8: { x: 40, y: 38, state: 'working' },
-        17: { x: 43, y: 30, state: 'idle' },
-        19: { x: 43, y: 30, state: 'sleeping' }
+        8: { x: 60, y: 20, state: 'working' },
+        12: { state: 'idle' },
+        17: { x: 40, y: 40, state: 'idle' },
+        19: { x: 58, y: 22, state: 'sleeping' },
+        22: { x: 58, y: 22, state: 'sleeping' }
       }
     }));
   }

@@ -170,6 +170,79 @@ body {
 .eclipse-tint { background-color: rgba(180, 80, 20, 0.3); }
 .dream-tint { background-color: rgba(50, 30, 100, 0.3); }
 
+/* ─── Persistent HUD ─── */
+#game-hud {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  pointer-events: none;
+}
+
+#hud-breath-bar {
+  position: relative;
+  width: 140px;
+  height: 14px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+#hud-breath-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #e06040, #75d1ba);
+  border-radius: 7px;
+  transition: width 0.3s ease;
+}
+
+#hud-breath-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+#hud-age {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+#hud-karma {
+  display: flex;
+  gap: 8px;
+  font-size: 0.6rem;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+#hud-karma-light { color: #ebd09b; }
+#hud-karma-shadow { color: #a08090; }
+
+#hud-act {
+  font-size: 0.55rem;
+  color: rgba(117, 209, 186, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
 /* ═══════════════════════════════════════════════════════════
    IN-GAME OVERLAYS
    ═══════════════════════════════════════════════════════════ */

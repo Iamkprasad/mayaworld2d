@@ -16,6 +16,20 @@
     <div id="emu-screen-container">
       <canvas id="game-screen" width="960" height="640"></canvas>
       
+      <!-- HUD overlay (always visible during gameplay) -->
+      <div id="game-hud" class="hidden">
+        <div id="hud-breath-bar">
+          <span id="hud-breath-fill" style="width:100%"></span>
+          <span id="hud-breath-text">260/260</span>
+        </div>
+        <div id="hud-age">Age: <span id="hud-age-value">0</span></div>
+        <div id="hud-karma">
+          <span id="hud-karma-light" title="Light Karma">☀ <span id="hud-karma-light-val">0</span></span>
+          <span id="hud-karma-shadow" title="Shadow Karma">☽ <span id="hud-karma-shadow-val">0</span></span>
+        </div>
+        <div id="hud-act">Act <span id="hud-act-value">I</span></div>
+      </div>
+      
       <!-- Tint Filters -->
       <div id="screen-tint" class="day-tint"></div>
       
