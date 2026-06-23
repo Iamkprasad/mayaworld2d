@@ -47,7 +47,7 @@ export class TileMap {
       VOID: 9
     };
 
-    // Decoration assets matching backgrounds.png
+    // Decoration assets matching backgrounds.png (61-col grid, 17px stride)
     this.DECOS = {
       EMPTY: 0,
       TREE: 24,         // GBA Green tree
@@ -61,8 +61,8 @@ export class TileMap {
       CROPS: 63,        // Farming crops
       FORGE: 368,       // Blacksmith anvil/furnace
       BOOKSHELF: 101,   // Hermitage bookshelf
-      SIGNBOARD: 25,    // GBA readable sign (was 24, collides with TREE)
-      CHEST: 324        // Chest / relic trunk (was 323, collides with RUINED_COL)
+      SIGNBOARD: 25,    // GBA readable sign
+      CHEST: 324        // Chest / relic trunk
     };
 
     // Use shared tile sheet — no per-map Image allocation
@@ -535,6 +535,10 @@ export class TileMap {
       // imageSmoothingEnabled set once at creation
       cctx.clearRect(0, 0, cw, ch);
 
+      // GBA dark palette boost: backgrounds.png tiles are extremely dark (avg brightness 12/255)
+      // Apply 5x brightness so tiles are visible alongside properly-colored character sprites
+      cctx.filter = 'brightness(5)';
+
       for (let y = 0; y < tilesH; y++) {
         for (let x = 0; x < tilesW; x++) {
           const mapX = camTileX + x;
@@ -561,6 +565,7 @@ export class TileMap {
           }
         }
       }
+      cctx.filter = 'none';
     }
 
     const offsetX = Math.round(-(camera.x - camTileX * this.tileSize));

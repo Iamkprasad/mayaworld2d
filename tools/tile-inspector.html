@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MayaWorld Tile Inspector</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',sans-serif;background:#0b0d10;color:#f3f4f6;padding:16px}
+h1{color:#75d1ba;font-size:1.2rem;margin-bottom:8px}
+h2{color:#ebd09b;font-size:1rem;margin:16px 0 8px;border-bottom:1px solid #333;padding-bottom:4px}
+.controls{margin:8px 0;display:flex;gap:8px;flex-wrap:wrap}
+.controls label{font-size:0.8rem;color:#86efac}
+.controls input[type=number]{width:80px;background:#15181f;border:1px solid #333a49;color:#f3f4f6;padding:4px;border-radius:4px}
+.controls select{background:#15181f;border:1px solid #333a49;color:#f3f4f6;padding:4px;border-radius:4px}
+.info-panel{background:#15181f;border:1px solid #333a49;border-radius:8px;padding:12px;margin:8px 0;font-size:0.85rem}
+.info-panel .idx{color:#3ecfab;font-weight:800;font-size:1.2rem}
+.info-panel .detail{color:#86efac;margin-left:8px}
+.sheet-section{margin-bottom:24px}
+.grid-wrap{overflow-x:auto;padding:8px;background:#0b0d10;border:1px solid #1a2030;border-radius:8px}
+.tile-grid{display:inline-grid;gap:1px;background:#1a1f2e;padding:2px}
+.tile{width:32px;height:32px;background:#0b0d10;border:1px solid #222;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;image-rendering:pixelated;transition:transform 0.1s,box-shadow 0.1s}
+.tile:hover{z-index:10;transform:scale(2.5);box-shadow:0 0 12px #3ecfab;border-color:#3ecfab}
+.tile.has-content{border-color:#333a49}
+.tile.highlight-base{border:2px solid #3ecfab;background:rgba(62,207,171,0.15)}
+.tile.highlight-deco{border:2px solid #ebd09b;background:rgba(235,208,155,0.15)}
+.tile.highlight-warp{border:2px solid #ff6666;background:rgba(255,102,102,0.15)}
+.tile .lbl{font-size:7px;color:#555;position:absolute;bottom:1px;right:1px;pointer-events:none}
+.tile:hover .lbl{color:#fff;font-size:8px}
+.highlight-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:0.75rem;margin:8px 0}
+.highlight-legend span{display:inline-flex;align-items:center;gap:4px}
+.highlight-legend .swatch{width:12px;height:12px;border-radius:2px;border:1px solid #555}
+.npc-grid{display:inline-grid;gap:2px;background:#1a1f2e;padding:4px}
+.npc-slot{width:64px;height:84px;background:#15181f;border:1px solid #333a49;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.npc-slot:hover{border-color:#ebd09b;box-shadow:0 0 8px rgba(235,208,155,0.3)}
+.npc-slot .slot-label{font-size:0.65rem;color:#6b7280;margin-top:2px}
+.player-frames{display:inline-flex;gap:2px;background:#1a1f2e;padding:4px}
+.player-frame{width:30px;height:44px;background:#15181f;border:1px solid #333a49;image-rendering:pixelated;position:relative}
+#search-box{position:fixed;top:8px;right:8px;background:#15181f;border:1px solid #333a49;color:#f3f4f6;padding:6px 10px;border-radius:6px;z-index:100;width:120px}
+</style>
+</head>
+<body>
+
+<input type="number" id="search-box" placeholder="Jump to tile #..." min="0">
+<h1>MayaWorld Tile Inspector</h1>
+
+<div class="info-panel" id="info-panel">
+  Click any tile to see its index. Use Ctrl+F to search.
+  <br>Base tiles: <span class="idx" id="base-indices"></span>
+  <br>Deco tiles: <span class="idx" id="deco-indices"></span>
+</div>
+
+<div class="controls">
+  <label>Highlight:</label>
+  <select id="highlight-mode">
+    <option value="none">None</option>
+    <option value="base">Base Tiles Only</option>
+    <option value="deco">Deco Tiles Only</option>
+    <option value="filled">Non-Empty Only</option>
+  </select>
+  <label>Scale:</label>
+  <select id="scale-mode">
+    <option value="1">1x</option>
+    <option value="2" selected>2x</option>
+    <option value="3">3x</option>
+  </select>
+</div>
+
+<div class="highlight-legend">
+  <span><span class="swatch" style="background:#3ecfab"></span> Base Tile (WATER=54, GRASS=1, SAND=29, DIRT=38, STONE=33, LAVA=367)</span>
+  <span><span class="swatch" style="background:#ebd09b"></span> Deco Tile (TREE=24, WALL=74, CHEST=324, etc.)</span>
+</div>
+
+<div class="sheet-section">
+  <h2>Backgrounds Tile Sheet (61x235 = 14,335 tiles)</h2>
+  <div class="grid-wrap"><div class="tile-grid" id="bg-grid"></div></div>
+</div>
+
+<div class="sheet-section">
+  <h2>NPC Sprite Sheet (256x84)</h2>
+  <p style="font-size:0.75rem;color:#6b7280;margin-bottom:4px">Each slot: 64x84 (4 directions x 16px, 4 frames x 21px)</p>
+  <div class="grid-wrap"><canvas id="npc-canvas" style="image-rendering:pixelated;max-width:100%"></canvas></div>
+  <div class="info-panel" id="npc-info">Click a slot to see its index. imagePoss.x = col, imagePoss.y = row</div>
+</div>
+
+<div class="sheet-section">
+  <h2>Player Sprite Sheet (60x132)</h2>
+  <p style="font-size:0.75rem;color:#6b7280;margin-bottom:4px">Each frame: 15x22 (4 directions, 6 walk frames)</p>
+  <div class="grid-wrap"><canvas id="player-canvas" style="image-rendering:pixelated;max-width:100%"></canvas></div>
+  <div class="info-panel" id="player-info">Direction: 0=down, 1=up, 2=left, 3=right | Frame: 0=stand, 1-5=walk</div>
+</div>
+
+<div class="sheet-section">
+  <h2>All NPC Variant Sheets</h2>
+  <div id="npc-variants" style="display:flex;gap:16px;flex-wrap:wrap"></div>
+</div>
+
+<div class="sheet-section">
+  <h2>Character Sprite Library (characterSprites.png) - NOT USED BY GAME</h2>
+  <p style="font-size:0.75rem;color:#ff6666;margin-bottom:4px">This sheet has 8x145=1160 frames but is never loaded. Game uses tiny player.png (24 frames) and npc.png (64 frames)</p>
+  <div class="grid-wrap"><canvas id="charsprites-canvas" style="image-rendering:pixelated;max-width:100%"></canvas></div>
+  <div class="info-panel" id="charsprites-info">120x3210 = 8 columns x 145 rows of 15x22 frames. Click to inspect.</div>
+</div>
+
+<div class="sheet-section">
+  <h2>DECOS Index Map (code references vs actual tiles)</h2>
+  <div class="info-panel">
+    <p style="margin-bottom:8px;color:#ebd09b">Code uses <code>(tileIndex-1) % 61</code> grid on backgrounds.png (1036x4000, 61x235 tiles)</p>
+    <p style="margin-bottom:8px;color:#86efac">All tiles are very dark (GBA dark palette). Brightness max ~73/255.</p>
+    <table style="font-size:0.75rem;border-collapse:collapse;width:100%">
+      <tr style="border-bottom:1px solid #333;color:#3ecfab"><th>Name</th><th>Index</th><th>Grid Pos</th><th>Avg Color</th><th>Status</th></tr>
+      <tr style="border-bottom:1px solid #222"><td>GRASS</td><td>1</td><td>col=0, row=0</td><td style="color:#888">rgb(13,13,13)</td><td>Very dark</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>SAND</td><td>29</td><td>col=28, row=0</td><td style="color:#888">rgb(9,12,8)</td><td>Very dark</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>WATER</td><td>54</td><td>col=53, row=0</td><td style="color:#888">rgb(2,5,5)</td><td>Very dark</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>DIRT</td><td>38</td><td>col=37, row=0</td><td style="color:#888">rgb(16,16,16)</td><td>Very dark</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>STONE</td><td>33</td><td>col=32, row=0</td><td style="color:#888">rgb(16,16,16)</td><td>Very dark</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>LAVA</td><td>367</td><td>col=0, row=6</td><td style="color:#888">rgb(10,7,6)</td><td>Very dark</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>TREE</td><td>24</td><td>col=23, row=0</td><td style="color:#888">rgb(40,37,37)</td><td>Dark brown</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>WALL</td><td>74</td><td>col=12, row=1</td><td style="color:#888">rgb(18,18,18)</td><td>Very dark</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>BRIDGE</td><td>140</td><td>col=17, row=2</td><td style="color:#888">rgb(21,31,22)</td><td>Dark green</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>CROPS</td><td>63</td><td>col=1, row=1</td><td style="color:#888">rgb(51,51,49)</td><td>Dark gray</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>CHEST</td><td>324</td><td>col=18, row=5</td><td style="color:#888">rgb(48,50,49)</td><td>Dark gray</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>ALTAR</td><td>275</td><td>col=30, row=4</td><td style="color:#888">rgb(23,28,27)</td><td>Dark gray</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>SHRINE</td><td>624</td><td>col=13, row=10</td><td style="color:#888">rgb(49,49,48)</td><td>Dark gray</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>RUINED_COL</td><td>323</td><td>col=17, row=5</td><td style="color:#888">rgb(31,39,31)</td><td>Dark gray</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>PORTAL</td><td>1254</td><td>col=33, row=20</td><td style="color:#888">rgb(39,39,39)</td><td>Dark gray</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>BOOKSHELF</td><td>101</td><td>col=39, row=1</td><td style="color:#888">rgb(33,34,35)</td><td>Dark gray</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>SIGNBOARD</td><td>25</td><td>col=24, row=0</td><td style="color:#888">rgb(42,37,36)</td><td>Dark brown</td></tr>
+      <tr style="border-bottom:1px solid #222"><td>FORGE</td><td>368</td><td>col=1, row=6</td><td style="color:#888">rgb(21,21,20)</td><td>Very dark</td></tr>
+      <tr><td>TEMPLE_WALL</td><td>342</td><td>col=36, row=5</td><td style="color:#888">rgb(33,36,37)</td><td>Dark gray</td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+const BASE_TILES = { WATER: 54, GRASS: 1, SAND: 29, DIRT: 38, STONE: 33, LAVA: 367, CORRUPTED: 2512, SNOW: 7, ICE: 8, VOID: 9 };
+const DECO_TILES = { EMPTY: 0, TREE: 24, WALL: 74, TEMPLE_WALL: 342, BRIDGE: 140, ALTAR: 275, SHRINE: 624, RUINED_COL: 323, PORTAL: 1254, CROPS: 63, FORGE: 368, BOOKSHELF: 101, SIGNBOARD: 25, CHEST: 324 };
+const SHRINE_3x3 = [307,308,309,368,369,370,429,430,431];
+
+const BASE_SET = new Set(Object.values(BASE_TILES));
+const DECO_SET = new Set(Object.values(DECO_TILES));
+
+const BG_COLS = 61;
+const BG_ROWS = 235;
+const STRIDE = 17;
+
+let bgImageData = null;
+
+document.getElementById('base-indices').textContent = Object.entries(BASE_TILES).map(([k,v])=>`${k}=${v}`).join(', ');
+document.getElementById('deco-indices').textContent = Object.entries(DECO_TILES).map(([k,v])=>`${k}=${v}`).join(', ');
+
+function buildBGGrid(img) {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  bgImageData = ctx;
+
+  const grid = document.getElementById('bg-grid');
+  const scale = parseInt(document.getElementById('scale-mode').value);
+  grid.style.gridTemplateColumns = `repeat(${BG_COLS}, ${32 * scale + scale}px)`;
+
+  for (let row = 0; row < BG_ROWS; row++) {
+    for (let col = 0; col < BG_COLS; col++) {
+      const idx = row * BG_COLS + col;
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.dataset.idx = idx;
+
+      const sx = col * STRIDE;
+      const sy = row * STRIDE;
+      const pixData = ctx.getImageData(sx + 4, sy + 4, 8, 8).data;
+      const hasContent = pixData.some((v, i) => i % 4 === 3 && v > 0);
+
+      if (hasContent) {
+        tile.classList.add('has-content');
+        const avg = avgColor(pixData);
+        tile.style.background = avg;
+      }
+
+      const lbl = document.createElement('span');
+      lbl.className = 'lbl';
+      lbl.textContent = idx;
+      tile.appendChild(lbl);
+
+      tile.addEventListener('click', () => selectTile(idx, col, row, ctx));
+      grid.appendChild(tile);
+    }
+  }
+}
+
+function avgColor(data) {
+  let r=0,g=0,b=0,c=0;
+  for(let i=0;i<data.length;i+=4){
+    if(data[i+3]>128){r+=data[i];g+=data[i+1];b+=data[i+2];c++;}
+  }
+  if(!c) return '#0b0d10';
+  return `rgb(${Math.round(r/c)},${Math.round(g/c)},${Math.round(b/c)})`;
+}
+
+function selectTile(idx, col, row, ctx) {
+  const panel = document.getElementById('info-panel');
+  let type = 'Unknown';
+  if(BASE_SET.has(idx)) type = 'BASE TILE';
+  if(DECO_SET.has(idx)) type = 'DECO TILE';
+  if(SHRINE_3x3.includes(idx)) type += ' + SHRINE 3x3';
+
+  const sx = col * STRIDE;
+  const sy = row * STRIDE;
+  const pixData = ctx.getImageData(sx, sy, 16, 16).data;
+  const hasContent = pixData.some((v,i) => i%4===3 && v>0);
+
+  let baseMatch = Object.entries(BASE_TILES).find(([k,v]) => v === idx);
+  let decoMatch = Object.entries(DECO_TILES).find(([k,v]) => v === idx);
+
+  panel.innerHTML = `
+    <span class="idx">#${idx}</span>
+    <span class="detail">${type}</span>
+    <span class="detail">Col: ${col}, Row: ${row}</span>
+    <span class="detail">Source: (${sx}, ${sy})</span>
+    <span class="detail">${hasContent ? 'HAS CONTENT' : 'EMPTY'}</span>
+    ${baseMatch ? `<span class="detail" style="color:#3ecfab">BASE: ${baseMatch[0]}</span>` : ''}
+    ${decoMatch ? `<span class="detail" style="color:#ebd09b">DECO: ${decoMatch[0]}</span>` : ''}
+  `;
+}
+
+function buildNPCSheet(img) {
+  const canvas = document.getElementById('npc-canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  canvas.style.width = img.width * 2 + 'px';
+  canvas.style.height = img.height * 2 + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0);
+
+  const info = document.getElementById('npc-info');
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = img.width / rect.width;
+    const scaleY = img.height / rect.height;
+    const x = Math.floor((e.clientX - rect.left) * scaleX);
+    const y = Math.floor((e.clientY - rect.top) * scaleY);
+    const slotX = Math.floor(x / 64);
+    const slotY = Math.floor(y / 84);
+    const frameX = Math.floor((x % 64) / 16);
+    const frameY = Math.floor((y % 84) / 21);
+    const dirNames = ['down','up','left','right'];
+    info.innerHTML = `Slot: (${slotX},${slotY}) | Frame: (${frameX},${frameY}) | Direction: ${dirNames[frameX] || '?'} | WalkFrame: ${frameY} | Pixel: (${x},${y})`;
+  });
+}
+
+function buildPlayerSheet(img) {
+  const canvas = document.getElementById('player-canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  canvas.style.width = img.width * 2 + 'px';
+  canvas.style.height = img.height * 2 + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0);
+
+  const info = document.getElementById('player-info');
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = img.width / rect.width;
+    const scaleY = img.height / rect.height;
+    const x = Math.floor((e.clientX - rect.left) * scaleX);
+    const y = Math.floor((e.clientY - rect.top) * scaleY);
+    const dir = Math.floor(x / 15);
+    const frame = Math.floor(y / 22);
+    const dirNames = ['down','up','left','right'];
+    info.innerHTML = `Direction: ${dir} (${dirNames[dir]}) | Frame: ${frame} | Pixel: (${x},${y})`;
+  });
+}
+
+function buildNPCVariants() {
+  const variants = ['npc.png','npc_normal.png','npc_corrupted.png','npc_old.png'];
+  const container = document.getElementById('npc-variants');
+  variants.forEach(name => {
+    const img = new Image();
+    img.onload = () => {
+      const div = document.createElement('div');
+      div.innerHTML = `<p style="font-size:0.75rem;color:#86efac;margin-bottom:4px">${name} (${img.width}x${img.height})</p>`;
+      const c = document.createElement('canvas');
+      c.width = img.width;
+      c.height = img.height;
+      c.style.imageRendering = 'pixelated';
+      c.style.maxWidth = '100%';
+      c.style.border = '1px solid #333a49';
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, 0, 0);
+      div.appendChild(c);
+      container.appendChild(div);
+    };
+    img.onerror = () => {
+      const div = document.createElement('div');
+      div.innerHTML = `<p style="font-size:0.75rem;color:#ff6666">${name}: NOT FOUND</p>`;
+      container.appendChild(div);
+    };
+    img.src = '../assets/images/' + name;
+  });
+}
+
+function buildCharSprites(img) {
+  const canvas = document.getElementById('charsprites-canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  canvas.style.width = Math.min(img.width, 600) + 'px';
+  canvas.style.height = Math.min(img.height, 10200) + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0);
+
+  const FW = 15, FH = 22;
+  const cols = 8, rows = 145;
+  const info = document.getElementById('charsprites-info');
+
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = img.width / rect.width;
+    const scaleY = img.height / rect.height;
+    const x = Math.floor((e.clientX - rect.left) * scaleX);
+    const y = Math.floor((e.clientY - rect.top) * scaleY);
+    const col = Math.floor(x / FW);
+    const row = Math.floor(y / FH);
+    const px = x % FW;
+    const py = y % FH;
+    const dirNames = ['down','up','left','right'];
+    const dirIdx = col % 4;
+    const slotIdx = Math.floor(col / 4);
+    info.innerHTML = `Frame: col=${col} row=${row} | Slot: ${slotIdx} Direction: ${dirNames[dirIdx] || '?'} | Local px: (${px},${py}) | Global pixel: (${x},${y})`;
+  });
+}
+
+function loadImages() {
+  const bg = new Image();
+  bg.onload = () => buildBGGrid(bg);
+  bg.src = '../assets/images/backgrounds.png';
+
+  const npc = new Image();
+  npc.onload = () => buildNPCSheet(npc);
+  npc.src = '../assets/images/npc.png';
+
+  const player = new Image();
+  player.onload = () => buildPlayerSheet(player);
+  player.src = '../assets/images/player.png';
+
+  const charSprites = new Image();
+  charSprites.onload = () => buildCharSprites(charSprites);
+  charSprites.src = '../assets/images/characterSprites.png';
+
+  buildNPCVariants();
+}
+
+document.getElementById('highlight-mode').addEventListener('change', (e) => {
+  const mode = e.target.value;
+  document.querySelectorAll('.tile').forEach(t => {
+    const idx = parseInt(t.dataset.idx);
+    t.classList.remove('highlight-base', 'highlight-deco', 'highlight-warp');
+    if (mode === 'base' && BASE_SET.has(idx)) t.classList.add('highlight-base');
+    if (mode === 'deco' && DECO_SET.has(idx)) t.classList.add('highlight-deco');
+    if (mode === 'filled' && t.classList.contains('has-content')) t.style.borderColor = '#3ecfab';
+    else if (mode !== 'filled') t.style.borderColor = '';
+  });
+});
+
+document.getElementById('scale-mode').addEventListener('change', () => {
+  document.getElementById('bg-grid').innerHTML = '';
+  const bg = new Image();
+  bg.onload = () => buildBGGrid(bg);
+  bg.src = '../assets/images/backgrounds.png';
+});
+
+document.getElementById('search-box').addEventListener('input', (e) => {
+  const val = parseInt(e.target.value);
+  if (isNaN(val)) return;
+  const tile = document.querySelector(`.tile[data-idx="${val}"]`);
+  if (tile) {
+    tile.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    tile.style.boxShadow = '0 0 12px #ff6666';
+    tile.style.borderColor = '#ff6666';
+    setTimeout(() => { tile.style.boxShadow = ''; tile.style.borderColor = ''; }, 2000);
+  }
+});
+
+loadImages();
+</script>
+</body>
+</html>
