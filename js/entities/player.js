@@ -8,7 +8,7 @@ export class Player {
     this.targetX = startX;
     this.targetY = startY;
     this.movingProgress = 0;
-    this.speed = 0.08; 
+    this.speed = 0.125; 
     this.direction = 0; // 0=down, 1=up, 2=left, 3=right
 
     // Narrative & Stats

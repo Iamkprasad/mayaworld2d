@@ -73,6 +73,7 @@ export class TileMap {
     this._tileCacheCtx = null;
     this._cacheCamTileX = -1;
     this._cacheCamTileY = -1;
+    this._tileSheetLoadedWhenCached = false;
 
     this.generateMap();
   }
@@ -139,17 +140,17 @@ export class TileMap {
         }
       }
 
-      // Place houses at clean locations
-      this.carveHouse(8, 20, 10, 8);
-      this.carveHouse(30, 24, 8, 6);
-      this.carveHouse(52, 28, 8, 6);
+      // Place GBA buildings aligned with door warps
+      this.carveAshram(9, 19);
+      this.carveGreenHouse(34, 23);
+      this.carveRedHouse(53, 28);
 
-      // Winding pathways
-      this.carvePath(40, 70, 12, 25);
-      this.carvePath(40, 70, 34, 29);
-      this.carvePath(40, 70, 56, 33);
-      this.carvePath(40, 70, 40, 59);
-      this.carvePath(40, 70, 40, 2);
+      // Winding pathways (width = 2)
+      this.carvePath(40, 70, 12, 25, 2);
+      this.carvePath(40, 70, 34, 29, 2);
+      this.carvePath(40, 70, 56, 33, 2);
+      this.carvePath(40, 70, 40, 59, 2);
+      this.carvePath(40, 70, 40, 2, 2);
 
       // Village center square - stone floor around the well
       for (let y = 32; y <= 38; y++) {
@@ -247,16 +248,89 @@ export class TileMap {
 
       // Vashistha Ashram in grove
       if (this.type === 'forest') {
-        this.carveHouse(12, 16, 10, 8);
+        this.carveAshram(13, 16);
+        // Carve connection path from Hermitage door to the main trail
+        this.carvePath(16, 21, 50, 21, 2);
       }
 
-      // Fill rest with dense trees
-      for (let i = 0; i < this.baseGrid.length; i++) {
-        const onPath = this.baseGrid[i] === this.TILES.DIRT;
-        const inHouse = this.ruinsGrid[i] > 0;
-        
-        if (!onPath && !inHouse && Math.random() < 0.8) {
-          this.decoGrid[i] = this.DECOS.TREE;
+      // Connect warps to main trail on Sacred Grove Entrance (Map 6)
+      if (this.id === 6) {
+        const southTrailX = Math.floor(this.width/2 + Math.sin(74 * 0.1) * 12);
+        this.carvePath(40, 79, southTrailX, 74, 2);
+
+        const northTrailX = Math.floor(this.width/2 + Math.sin(5 * 0.1) * 12);
+        this.carvePath(40, 1, northTrailX, 5, 2);
+
+        const midTrailX = Math.floor(this.width/2 + Math.sin(40 * 0.1) * 12);
+        this.carvePath(1, 40, midTrailX, 40, 2);
+      }
+
+      // Connect warps to main trail on Canopy of Roots (Map 8)
+      if (this.id === 8) {
+        const southTrailX = Math.floor(this.width/2 + Math.sin(74 * 0.1) * 12);
+        this.carvePath(40, 79, southTrailX, 74, 2);
+
+        const caveTrailX = Math.floor(this.width/2 + Math.sin(13 * 0.1) * 12);
+        this.carvePath(70, 13, caveTrailX, 13, 2);
+      }
+
+      // Fill rest with dense trees using smooth clump noise, keeping paths/warps/houses clear
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          const idx = y * this.width + x;
+          const onPath = this.baseGrid[idx] === this.TILES.DIRT;
+          const inHouse = this.ruinsGrid[idx] > 0;
+          if (onPath || inHouse) continue;
+
+          // Check distance to path
+          let nearPath = false;
+          for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+              const nx = x + dx;
+              const ny = y + dy;
+              if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                if (this.baseGrid[ny * this.width + nx] === this.TILES.DIRT) {
+                  nearPath = true;
+                  break;
+                }
+              }
+            }
+            if (nearPath) break;
+          }
+
+          // Check distance to warps
+          let nearWarp = false;
+          for (const w of this.warps) {
+            if (Math.abs(w.x - x) <= 3 && Math.abs(w.y - y) <= 3) {
+              nearWarp = true;
+              break;
+            }
+          }
+
+          // Check distance to house
+          let nearHouse = false;
+          for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+              const nx = x + dx;
+              const ny = y + dy;
+              if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                if (this.ruinsGrid[ny * this.width + nx] > 0) {
+                  nearHouse = true;
+                  break;
+                }
+              }
+            }
+            if (nearHouse) break;
+          }
+
+          if (nearPath || nearWarp || nearHouse) continue;
+
+          // Organic clump waves
+          const noise = Math.sin(x * 0.3) * Math.sin(y * 0.3);
+          const treeProb = noise > -0.2 ? 0.65 : 0.15;
+          if (Math.random() < treeProb) {
+            this.decoGrid[idx] = this.DECOS.TREE;
+          }
         }
       }
 
@@ -266,22 +340,116 @@ export class TileMap {
     
     else if (this.type === 'cave' || this.type === 'cave_vault' || this.type === 'lava_cave') {
       this.baseGrid.fill(this.TILES.STONE);
+      this.decoGrid.fill(this.DECOS.WALL);
 
-      // Cavern rock maze
-      for (let i = 0; i < this.baseGrid.length; i++) {
-        const x = i % this.width;
-        const y = Math.floor(i / this.width);
-        const isWall = (Math.sin(x*0.35) * Math.cos(y*0.35) > 0.15) && (x > 3 && x < this.width-4);
-        
-        if (isWall) {
-          this.decoGrid[i] = this.DECOS.WALL;
+      // Define key points to connect in caverns to guarantee playability
+      const pathsToCarve = [];
+      if (this.id === 9) { // Whispering Caves
+        pathsToCarve.push({ x1: 20, y1: 38, x2: 20, y2: 20 });
+        pathsToCarve.push({ x1: 20, y1: 20, x2: 10, y2: 15 });
+        pathsToCarve.push({ x1: 20, y1: 20, x2: 30, y2: 15 });
+      } else if (this.id === 12) { // Lava Caves
+        pathsToCarve.push({ x1: 20, y1: 38, x2: 20, y2: 20 });
+        pathsToCarve.push({ x1: 20, y1: 20, x2: 10, y2: 15 });
+        pathsToCarve.push({ x1: 20, y1: 20, x2: 30, y2: 15 });
+      } else if (this.id === 17) { // Tidal Ruins Vault
+        pathsToCarve.push({ x1: 12, y1: 22, x2: 12, y2: 6 });
+      } else {
+        pathsToCarve.push({ x1: Math.floor(this.width/2), y1: this.height - 2, x2: Math.floor(this.width/2), y2: 2 });
+      }
+
+      // Helper to clear circular chambers/path corridors
+      const clearCorridor = (x1, y1, x2, y2, radius = 3) => {
+        let curX = x1;
+        let curY = y1;
+        const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
+        for (let s = 0; s <= steps; s++) {
+          const t = steps === 0 ? 0 : s / steps;
+          const cx = Math.round(x1 + (x2 - x1) * t);
+          const cy = Math.round(y1 + (y2 - y1) * t);
+          
+          for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+              if (dx*dx + dy*dy <= radius*radius) {
+                const nx = cx + dx;
+                const ny = cy + dy;
+                if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                  this.decoGrid[ny * this.width + nx] = this.DECOS.EMPTY;
+                }
+              }
+            }
+          }
+        }
+      };
+
+      // Carve paths
+      for (const p of pathsToCarve) {
+        clearCorridor(p.x1, p.y1, p.x2, p.y2, 3);
+      }
+
+      // Add chest in Map 17
+      if (this.id === 17) {
+        this.decoGrid[6 * this.width + 12] = this.DECOS.CHEST;
+      }
+
+      // Add a natural erosion pass to cave walls for GBA organic feel
+      const tempWalls = [...this.decoGrid];
+      for (let y = 1; y < this.height - 1; y++) {
+        for (let x = 1; x < this.width - 1; x++) {
+          const idx = y * this.width + x;
+          if (tempWalls[idx] === this.DECOS.EMPTY) {
+            if (Math.random() < 0.18) {
+              let wallNeighbors = 0;
+              for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                  if (tempWalls[(y + dy) * this.width + (x + dx)] === this.DECOS.WALL) {
+                    wallNeighbors++;
+                  }
+                }
+              }
+              if (wallNeighbors >= 2) {
+                this.decoGrid[idx] = this.DECOS.WALL;
+              }
+            }
+          } else {
+            if (Math.random() < 0.15) {
+              let emptyNeighbors = 0;
+              for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                  if (tempWalls[(y + dy) * this.width + (x + dx)] === this.DECOS.EMPTY) {
+                    emptyNeighbors++;
+                  }
+                }
+              }
+              if (emptyNeighbors >= 3) {
+                this.decoGrid[idx] = this.DECOS.EMPTY;
+              }
+            }
+          }
+        }
+      }
+
+      // Guarantee spawn area and warps are completely empty
+      for (const w of this.warps) {
+        for (let dy = -2; dy <= 2; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            const nx = w.x + dx;
+            const ny = w.y + dy;
+            if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+              this.decoGrid[ny * this.width + nx] = this.DECOS.EMPTY;
+            }
+          }
         }
       }
 
       if (this.type === 'lava_cave') {
-        // Lava pools inside
-        for (let y = 10; y < 20; y++) {
-          for (let x = 10; x < 30; x++) {
+        // Place lava pools in specific chambers away from paths
+        for (let y = 12; y < 18; y++) {
+          for (let x = 8; x < 14; x++) {
+            this.baseGrid[y * this.width + x] = this.TILES.LAVA;
+            this.decoGrid[y * this.width + x] = this.DECOS.EMPTY;
+          }
+          for (let x = 26; x < 32; x++) {
             this.baseGrid[y * this.width + x] = this.TILES.LAVA;
             this.decoGrid[y * this.width + x] = this.DECOS.EMPTY;
           }
@@ -292,8 +460,10 @@ export class TileMap {
     else if (this.type === 'volcano' || this.type === 'volcano_peaks') {
       this.baseGrid.fill(this.TILES.STONE); // Obsidian rock fields
 
-      // Lava channels
+      // Lava channels with crossings (bridges)
       for (let y = 0; y < this.height; y++) {
+        if ((y >= 37 && y <= 43) || (y >= 12 && y <= 18)) continue;
+
         const lx = Math.floor(35 + Math.sin(y * 0.1) * 8);
         for (let x = lx - 3; x <= lx + 3; x++) {
           this.baseGrid[y * this.width + x] = this.TILES.LAVA;
@@ -301,8 +471,40 @@ export class TileMap {
       }
 
       // Daksha's Forge fortress on ascent path
-      if (this.type === 'volcano') {
-        this.carveHouse(54, 20, 12, 10);
+      if (this.id === 10) {
+        this.carveRedHouse(57, 21);
+
+        // Roads
+        this.carvePath(1, 40, 78, 40, 2);
+        this.carvePath(50, 40, 60, 25, 2);
+        this.carvePath(60, 25, 40, 9, 2);
+      }
+
+      // Scatter basalt rocks organically
+      for (let y = 2; y < this.height - 2; y++) {
+        for (let x = 2; x < this.width - 2; x++) {
+          const idx = y * this.width + x;
+          if (this.baseGrid[idx] === this.TILES.STONE && this.decoGrid[idx] === this.DECOS.EMPTY) {
+            let nearPath = false;
+            for (let dy = -2; dy <= 2; dy++) {
+              for (let dx = -2; dx <= 2; dx++) {
+                const nx = x + dx;
+                const ny = y + dy;
+                if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                  const targetTile = this.baseGrid[ny * this.width + nx];
+                  if (targetTile === this.TILES.DIRT || targetTile === this.TILES.LAVA) {
+                    nearPath = true;
+                    break;
+                  }
+                }
+              }
+              if (nearPath) break;
+            }
+            if (!nearPath && Math.random() < 0.08) {
+              this.decoGrid[idx] = this.DECOS.WALL;
+            }
+          }
+        }
       }
     } 
     
@@ -338,8 +540,48 @@ export class TileMap {
       }
 
       // Cabin house on Snowy pass
-      if (this.type === 'snow_pass') {
-        this.carveHouse(24, 16, 12, 10);
+      if (this.id === 18) {
+        this.carveGreenHouse(30, 16);
+
+        // Snowy roads
+        this.carvePath(78, 40, 30, 21, 2);
+        this.carvePath(30, 21, 20, 1, 2);
+      }
+
+      // Altar relic chest on Silent Peak Summit
+      if (this.id === 20) {
+        this.decoGrid[10 * this.width + 20] = this.DECOS.CHEST;
+      }
+
+      // Scatter pine trees on snow pass organically
+      for (let y = 2; y < this.height - 2; y++) {
+        for (let x = 2; x < this.width - 2; x++) {
+          const idx = y * this.width + x;
+          if (this.baseGrid[idx] === this.TILES.SAND && this.decoGrid[idx] === this.DECOS.EMPTY) {
+            let nearPathOrIce = false;
+            for (let dy = -2; dy <= 2; dy++) {
+              for (let dx = -2; dx <= 2; dx++) {
+                const nx = x + dx;
+                const ny = y + dy;
+                if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                  const targetIdx = ny * this.width + nx;
+                  if (
+                    this.baseGrid[targetIdx] === this.TILES.DIRT || 
+                    this.baseGrid[targetIdx] === this.TILES.WATER ||
+                    this.ruinsGrid[targetIdx] > 0
+                  ) {
+                    nearPathOrIce = true;
+                    break;
+                  }
+                }
+              }
+              if (nearPathOrIce) break;
+            }
+            if (!nearPathOrIce && Math.random() < 0.12) {
+              this.decoGrid[idx] = this.DECOS.TREE; // Pine tree
+            }
+          }
+        }
       }
     } 
     
@@ -415,15 +657,72 @@ export class TileMap {
     }
   }
 
-  carvePath(x1, y1, x2, y2) {
+  carveAshram(sx, sy) {
+    const w = 7;
+    const h = 6;
+    const startCol = 0;
+    const startRow = 6;
+    for (let dr = 0; dr < h; dr++) {
+      for (let dc = 0; dc < w; dc++) {
+        const c = startCol + dc;
+        const r = startRow + dr;
+        const idx = (sy + dr) * this.width + (sx + dc);
+        this.ruinsGrid[idx] = r * 61 + c + 1;
+      }
+    }
+  }
+
+  carveGreenHouse(sx, sy) {
+    const w = 6;
+    const h = 6;
+    const startCol = 24;
+    const startRow = 17;
+    for (let dr = 0; dr < h; dr++) {
+      for (let dc = 0; dc < w; dc++) {
+        const c = startCol + dc;
+        const r = startRow + dr;
+        const idx = (sy + dr) * this.width + (sx + dc);
+        this.ruinsGrid[idx] = r * 61 + c + 1;
+      }
+    }
+  }
+
+  carveRedHouse(sx, sy) {
+    const w = 12;
+    const h = 5;
+    const startCol = 16;
+    const startRow = 23;
+    for (let dr = 0; dr < h; dr++) {
+      for (let dc = 0; dc < w; dc++) {
+        const c = startCol + dc;
+        const r = startRow + dr;
+        const idx = (sy + dr) * this.width + (sx + dc);
+        this.ruinsGrid[idx] = r * 61 + c + 1;
+      }
+    }
+  }
+
+  carvePath(x1, y1, x2, y2, width = 2) {
     let curX = x1;
     let curY = y1;
+    const carve = (cx, cy) => {
+      for (let dy = 0; dy < width; dy++) {
+        for (let dx = 0; dx < width; dx++) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+            this.baseGrid[ny * this.width + nx] = this.TILES.DIRT;
+          }
+        }
+      }
+    };
+
     while (curX !== x2 || curY !== y2) {
-      this.baseGrid[curY * this.width + curX] = this.TILES.DIRT;
+      carve(curX, curY);
       if (curX !== x2) curX += Math.sign(x2 - curX);
       else curY += Math.sign(y2 - curY);
     }
-    this.baseGrid[curY * this.width + curX] = this.TILES.DIRT;
+    carve(curX, curY);
   }
 
   isCollidable(x, y) {
@@ -471,7 +770,7 @@ export class TileMap {
     }
 
     // Check ruins/buildings overlays (walls/roofs collide)
-    if (this.ruinsGrid[idx] === 1 || this.ruinsGrid[idx] === 3) {
+    if (this.ruinsGrid[idx] > 0) {
       return true;
     }
 
@@ -506,76 +805,43 @@ export class TileMap {
   }
 
   draw(ctx, camera) {
-    // imageSmoothingEnabled set once in game.js constructor
-
     const camTileX = Math.floor(camera.x / this.tileSize);
     const camTileY = Math.floor(camera.y / this.tileSize);
 
     const tilesW = Math.ceil(camera.width / this.tileSize) + 2;
     const tilesH = Math.ceil(camera.height / this.tileSize) + 2;
 
-    if (!this._tileCacheCanvas || camTileX !== this._cacheCamTileX || camTileY !== this._cacheCamTileY) {
-      this._cacheCamTileX = camTileX;
-      this._cacheCamTileY = camTileY;
-
-      const cw = tilesW * this.tileSize;
-      const ch = tilesH * this.tileSize;
-
-      if (!this._tileCacheCanvas) {
-        this._tileCacheCanvas = document.createElement('canvas');
-        this._tileCacheCtx = this._tileCacheCanvas.getContext('2d');
-        this._tileCacheCtx.imageSmoothingEnabled = false;
-      }
-      if (this._tileCacheCanvas.width !== cw || this._tileCacheCanvas.height !== ch) {
-        this._tileCacheCanvas.width = cw;
-        this._tileCacheCanvas.height = ch;
-      }
-
-      const cctx = this._tileCacheCtx;
-      // imageSmoothingEnabled set once at creation
-      cctx.clearRect(0, 0, cw, ch);
-
-      // GBA dark palette boost: backgrounds.png tiles are extremely dark (avg brightness 12/255)
-      // Apply 5x brightness so tiles are visible alongside properly-colored character sprites
-      cctx.filter = 'brightness(5)';
-
-      for (let y = 0; y < tilesH; y++) {
-        for (let x = 0; x < tilesW; x++) {
-          const mapX = camTileX + x;
-          const mapY = camTileY + y;
-          if (mapX < 0 || mapX >= this.width || mapY < 0 || mapY >= this.height) continue;
-
-          const idx = mapY * this.width + mapX;
-          const px = x * this.tileSize;
-          const py = y * this.tileSize;
-
-          const tile = this.baseGrid[idx];
-          this.drawGBATile(cctx, this.getTileIndexForType(tile), px, py);
-
-          const structure = this.ruinsGrid[idx];
-          if (structure === 1) {
-            this.drawGBATile(cctx, 624, px, py);
-          } else if (structure === 3) {
-            this.drawGBATile(cctx, 464, px, py);
-          }
-
-          const deco = this.decoGrid[idx];
-          if (deco !== this.DECOS.EMPTY) {
-            this.drawDeco(cctx, deco, px, py);
-          }
-        }
-      }
-      cctx.filter = 'none';
-    }
-
     const offsetX = Math.round(-(camera.x - camTileX * this.tileSize));
     const offsetY = Math.round(-(camera.y - camTileY * this.tileSize));
-    ctx.drawImage(this._tileCacheCanvas, offsetX, offsetY);
+
+    for (let y = 0; y < tilesH; y++) {
+      for (let x = 0; x < tilesW; x++) {
+        const mapX = camTileX + x;
+        const mapY = camTileY + y;
+        if (mapX < 0 || mapX >= this.width || mapY < 0 || mapY >= this.height) continue;
+
+        const idx = mapY * this.width + mapX;
+        const px = offsetX + x * this.tileSize;
+        const py = offsetY + y * this.tileSize;
+
+        const tile = this.baseGrid[idx];
+        this.drawGBATile(ctx, this.getTileIndexForType(tile), px, py);
+
+        const structure = this.ruinsGrid[idx];
+        if (structure > 0) {
+          this.drawGBATile(ctx, structure, px, py);
+        }
+
+        const deco = this.decoGrid[idx];
+        if (deco !== this.DECOS.EMPTY) {
+          this.drawDeco(ctx, deco, px, py);
+        }
+      }
+    }
   }
 
   invalidateCache() {
-    this._cacheCamTileX = -1;
-    this._cacheCamTileY = -1;
+    // Cache is deprecated for direct hardware-accelerated canvas drawing
   }
 
   drawDeco(ctx, deco, px, py) {

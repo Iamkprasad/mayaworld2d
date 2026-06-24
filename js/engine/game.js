@@ -352,23 +352,120 @@ class GameApp {
       this.keys[e.code] = false;
     });
 
-    // 2. Virtual console buttons
+    // 2. Virtual console action buttons
     const bindBtn = (id, code) => {
       const btn = document.getElementById(id);
-      btn.addEventListener('mousedown', () => { this.keys[code] = true; this.handleKeyDown(code); });
-      btn.addEventListener('mouseup', () => { this.keys[code] = false; });
-      btn.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys[code] = true; this.handleKeyDown(code); });
-      btn.addEventListener('touchend', (e) => { e.preventDefault(); this.keys[code] = false; });
+      if (!btn) return;
+      btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.keys[code] = true;
+        this.handleKeyDown(code);
+      });
+      btn.addEventListener('mouseup', (e) => {
+        e.preventDefault();
+        this.keys[code] = false;
+      });
+      btn.addEventListener('mouseleave', () => {
+        this.keys[code] = false;
+      });
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        this.keys[code] = true;
+        this.handleKeyDown(code);
+      }, { passive: false });
+      btn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        this.keys[code] = false;
+      }, { passive: false });
     };
 
-    bindBtn('btn-up', 'ArrowUp');
-    bindBtn('btn-down', 'ArrowDown');
-    bindBtn('btn-left', 'ArrowLeft');
-    bindBtn('btn-right', 'ArrowRight');
     bindBtn('btn-a', 'KeyZ');
     bindBtn('btn-b', 'KeyX');
     bindBtn('btn-select', 'ShiftLeft');
     bindBtn('btn-start', 'Enter');
+
+    // 2b. Unified D-Pad sliding & drag panel
+    const dpad = document.querySelector('.dpad-panel');
+    if (dpad) {
+      const buttons = {
+        'btn-up': 'ArrowUp',
+        'btn-down': 'ArrowDown',
+        'btn-left': 'ArrowLeft',
+        'btn-right': 'ArrowRight'
+      };
+
+      const handlePointer = (e) => {
+        e.preventDefault();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const target = document.elementFromPoint(clientX, clientY);
+        
+        // Clear direction keys first
+        for (const code of Object.values(buttons)) {
+          this.keys[code] = false;
+        }
+
+        if (target && target.id && buttons[target.id]) {
+          const code = buttons[target.id];
+          this.keys[code] = true;
+          // Apply active styling
+          Object.keys(buttons).forEach(id => {
+            const btnEl = document.getElementById(id);
+            if (btnEl) btnEl.classList.toggle('active', id === target.id);
+          });
+        } else {
+          Object.keys(buttons).forEach(id => {
+            const btnEl = document.getElementById(id);
+            if (btnEl) btnEl.classList.remove('active');
+          });
+        }
+      };
+
+      const endPointer = () => {
+        for (const code of Object.values(buttons)) {
+          this.keys[code] = false;
+        }
+        Object.keys(buttons).forEach(id => {
+          const btnEl = document.getElementById(id);
+          if (btnEl) btnEl.classList.remove('active');
+        });
+      };
+
+      let isMouseDown = false;
+      dpad.addEventListener('mousedown', (e) => {
+        isMouseDown = true;
+        handlePointer(e);
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (isMouseDown) {
+          handlePointer(e);
+        }
+      });
+      window.addEventListener('mouseup', () => {
+        if (isMouseDown) {
+          isMouseDown = false;
+          endPointer();
+        }
+      });
+
+      dpad.addEventListener('touchstart', (e) => {
+        handlePointer(e);
+      }, { passive: false });
+      dpad.addEventListener('touchmove', (e) => {
+        handlePointer(e);
+      }, { passive: false });
+      dpad.addEventListener('touchend', (e) => {
+        endPointer();
+      }, { passive: false });
+      dpad.addEventListener('touchcancel', (e) => {
+        endPointer();
+      }, { passive: false });
+    }
+
+    // 2c. Clear keys on window blur
+    window.addEventListener('blur', () => {
+      this.keys = {};
+    });
 
     // 7. Intro start game button
     const startBtn = document.getElementById('start-game-btn');
