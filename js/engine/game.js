@@ -252,6 +252,11 @@ class GameApp {
     if (introOverlay) {
       introOverlay.classList.add('hidden');
     }
+    // Show system action bar now that game has started
+    const sysBar = document.querySelector('.system-action-bar');
+    if (sysBar) {
+      sysBar.classList.remove('hidden');
+    }
     const led = document.getElementById('power-led');
     if (led) {
       led.classList.remove('low-batt');
@@ -1498,6 +1503,10 @@ class GameApp {
       this.renderBattle();
       return;
     }
+
+    // 0. Dark canvas fill — prevents bright transparent areas during gameplay
+    this.ctx.fillStyle = '#0a1f16';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // 1. Draw Map grid
     this.map.draw(this.ctx, this.camera);

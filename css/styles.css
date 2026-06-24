@@ -121,6 +121,10 @@ header {
   transform: scale(0.92);
 }
 
+.btn-label {
+  display: none;
+}
+
 /* ================================================================
    GAMEPLAY COCKPIT
    ================================================================ */
@@ -354,14 +358,14 @@ header {
   font-family: var(--font-sans);
 }
 
-.btn-b {
+.btn-a {
   background: radial-gradient(circle at 35% 35%, #c9a64f, #8a6f30);
   border: 2px solid var(--gold);
   color: var(--bg-deep);
   box-shadow: 0 4px 0 #6b5520, 0 6px 14px rgba(196, 166, 79, 0.25);
 }
 
-.btn-a {
+.btn-b {
   background: radial-gradient(circle at 35% 35%, #22c55e, #15803d);
   border: 2px solid #16a34a;
   color: #ffffff;
@@ -413,12 +417,13 @@ header {
   position: relative;
   width: 140px;
   height: 14px;
-  background: rgba(10, 35, 24, 0.75);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(10, 35, 24, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(196, 166, 79, 0.2);
   border-radius: 7px;
   overflow: hidden;
+  box-shadow: 0 0 8px rgba(196, 166, 79, 0.08);
 }
 
 #hud-breath-fill {
@@ -449,9 +454,9 @@ header {
 
 #hud-age {
   display: inline-block;
-  background: rgba(10, 35, 24, 0.75);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(10, 35, 24, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(196, 166, 79, 0.15);
   border-radius: 4px;
   padding: 1px 6px;
@@ -459,6 +464,7 @@ header {
   color: var(--cream-warm);
   letter-spacing: 0.3px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 0 6px rgba(196, 166, 79, 0.06);
 }
 
 #hud-karma {
@@ -469,14 +475,15 @@ header {
 #hud-karma-light,
 #hud-karma-shadow {
   display: inline-block;
-  background: rgba(10, 35, 24, 0.75);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(10, 35, 24, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(196, 166, 79, 0.12);
   border-radius: 4px;
   padding: 1px 6px;
   font-size: 0.6rem;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 0 6px rgba(196, 166, 79, 0.06);
 }
 
 #hud-karma-light  { color: var(--gold); }
@@ -484,9 +491,9 @@ header {
 
 #hud-act {
   display: inline-block;
-  background: rgba(10, 35, 24, 0.75);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(10, 35, 24, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(26, 107, 82, 0.25);
   border-radius: 4px;
   padding: 1px 6px;
@@ -495,6 +502,7 @@ header {
   text-transform: uppercase;
   letter-spacing: 1px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 0 6px rgba(26, 107, 82, 0.08);
 }
 
 /* ================================================================
@@ -1416,9 +1424,11 @@ header {
     grid-row: 2;
     justify-self: start;
     margin-left: 4px;
-    margin-bottom: 8px;
-    grid-template-columns: repeat(3, 38px);
-    grid-template-rows: repeat(3, 38px);
+    margin-bottom: 4px;
+    grid-template-columns: repeat(3, 40px);
+    grid-template-rows: repeat(3, 40px);
+    transform: scale(1.12);
+    transform-origin: bottom left;
   }
 
   .action-pedal-pod {
@@ -1426,20 +1436,22 @@ header {
     grid-row: 2;
     justify-self: end;
     margin-right: 4px;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     gap: 10px;
+    transform: scale(1.12);
+    transform-origin: bottom right;
   }
 
   .round-button {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     font-size: 0.85rem;
   }
 
   .system-action-bar {
-    margin-top: 4px;
+    margin-top: 2px;
     gap: 8px;
-    padding: 6px 12px;
+    padding: 5px 12px;
   }
 
   .speed-inline input[type="range"] {
@@ -1451,13 +1463,24 @@ header {
   }
 
   .nav-action-btn {
-    width: 32px;
-    height: 32px;
+    width: auto;
+    height: auto;
+    padding: 5px 8px;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .nav-action-btn svg {
     width: 13px;
     height: 13px;
+  }
+
+  .btn-label {
+    display: block;
+    font-size: 0.4rem;
+    font-family: var(--font-pixel);
+    color: var(--cream-muted);
+    letter-spacing: 0.3px;
   }
 
   #dialogue-box {

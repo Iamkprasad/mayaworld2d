@@ -19,9 +19,11 @@
       <div class="header-controls">
         <button class="nav-action-btn" id="upload-sav-btn" title="Upload Save">
           <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h12v2H5v-2z"/></svg>
+          <span class="btn-label">Load</span>
         </button>
         <button class="nav-action-btn" id="download-sav-btn" title="Download Save">
           <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          <span class="btn-label">Save</span>
         </button>
         <input type="file" id="sav-file-input" accept=".sav" class="hidden">
       </div>
@@ -164,7 +166,7 @@
         </div>
 
         <!-- SYSTEM ACTION BAR -->
-        <div class="system-action-bar">
+        <div class="system-action-bar hidden">
           <div class="speed-inline">
             <label for="speed-slider" class="speed-label">SPD</label>
             <input type="range" id="speed-slider" min="0.5" max="3" step="0.1" value="1.0">
