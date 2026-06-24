@@ -1,5 +1,8 @@
 // NPC Entities: Sages, Civilians, Mayasur, and the Wanderer - GBA Sprites
 
+// Tint cache: maps "id_src tint" → offscreen canvas with color overlay
+const _tintCache = new Map();
+
 export class NPC {
   constructor(id, type, name, x, y, options = {}) {
     this.id = id;
@@ -24,6 +27,9 @@ export class NPC {
     
     // GBA Spritesheet Position Configuration (x, y coordinates on the grid of sheet)
     this.imagePoss = options.imagePoss || { x: 0, y: 0 };
+    
+    // Per-NPC color tint to visually distinguish sprites sharing the same slot
+    this.tint = options.tint || null;
     
     this.spriteSheet = new Image();
     this.spriteSheet.onerror = () => {
@@ -52,7 +58,35 @@ export class NPC {
 
     if (this.spriteSheet.src.indexOf(targetSrc) === -1) {
       this.spriteSheet.src = targetSrc;
+      // Invalidate tint cache when source changes
+      if (this.tint) {
+        for (const key of _tintCache.keys()) {
+          if (key.startsWith(this.id + '_')) _tintCache.delete(key);
+        }
+      }
     }
+  }
+
+  _getTintedSheet() {
+    if (!this.tint) return null;
+    const src = this.spriteSheet.src;
+    const cacheKey = this.id + '_' + src + ' ' + this.tint;
+    const cached = _tintCache.get(cacheKey);
+    if (cached) return cached;
+    if (!this.spriteSheet.complete || this.spriteSheet.naturalWidth === 0) return null;
+    const w = this.spriteSheet.naturalWidth;
+    const h = this.spriteSheet.naturalHeight;
+    const off = document.createElement('canvas');
+    off.width = w;
+    off.height = h;
+    const octx = off.getContext('2d');
+    octx.drawImage(this.spriteSheet, 0, 0);
+    octx.globalCompositeOperation = 'source-atop';
+    octx.fillStyle = this.tint;
+    octx.fillRect(0, 0, w, h);
+    octx.globalCompositeOperation = 'source-over';
+    _tintCache.set(cacheKey, off);
+    return off;
   }
 
   update(deltaTime, clock, mayasurAttackActive, epochId = 1, map = null) {
@@ -225,13 +259,14 @@ export class NPC {
     // Draw Sage / Civilian from sheet using coordinates
     const srcX = (this.spriteWidth * this.direction) + (this.imagePoss.x * 64);
     const srcY = (this.spriteHeight * this.walkFrame) + (this.imagePoss.y * 84);
+    const sheet = this._getTintedSheet() || this.spriteSheet;
 
-    if (srcX + this.spriteWidth <= this.spriteSheet.naturalWidth && srcY + this.spriteHeight <= this.spriteSheet.naturalHeight) {
+    if (srcX + this.spriteWidth <= sheet.naturalWidth && srcY + this.spriteHeight <= sheet.naturalHeight) {
       const drawHeight = Math.floor(ts * (21 / 16));
       const drawYOffset = Math.floor(ts * 0.3);
 
       ctx.drawImage(
-        this.spriteSheet,
+        sheet,
         srcX, srcY,
         this.spriteWidth, this.spriteHeight,
         screenPos.x, screenPos.y - drawYOffset,
@@ -247,15 +282,15 @@ export class NPC {
 // Sage profiles mapped to imagePoss grid positions (npc.png: 256x84, 4 slots)
 export function createSages() {
   return [
-    new NPC(101, 'sage', 'Bhrigu', 96, 30, { dialogueKey: 'bhrigu', imagePoss: { x: 0, y: 0 } }),
-    new NPC(102, 'sage', 'Pulastya', 26, 80, { dialogueKey: 'pulastya', imagePoss: { x: 1, y: 0 } }),
-    new NPC(103, 'sage', 'Pulaha', 48, 14, { dialogueKey: 'pulaha', imagePoss: { x: 2, y: 0 } }),
-    new NPC(104, 'sage', 'Kratu', 76, 22, { dialogueKey: 'kratu', imagePoss: { x: 3, y: 0 } }),
-    new NPC(105, 'sage', 'Angiras', 64, 50, { dialogueKey: 'angiras', imagePoss: { x: 0, y: 0 } }),
-    new NPC(106, 'sage', 'Marichi', 20, 26, { dialogueKey: 'marichi', imagePoss: { x: 1, y: 0 } }),
-    new NPC(107, 'sage', 'Atri', 22, 60, { dialogueKey: 'atri', imagePoss: { x: 2, y: 0 } }),
-    new NPC(108, 'sage', 'Vashistha', 64, 84, { dialogueKey: 'vashistha', imagePoss: { x: 3, y: 0 } }),
-    new NPC(109, 'sage', 'Daksha', 105, 36, { dialogueKey: 'daksha', imagePoss: { x: 0, y: 0 } })
+    new NPC(101, 'sage', 'Bhrigu', 96, 30, { dialogueKey: 'bhrigu', imagePoss: { x: 0, y: 0 }, tint: 'rgba(210,160,60,0.28)' }),
+    new NPC(102, 'sage', 'Pulastya', 26, 80, { dialogueKey: 'pulastya', imagePoss: { x: 1, y: 0 }, tint: 'rgba(80,130,200,0.28)' }),
+    new NPC(103, 'sage', 'Pulaha', 48, 14, { dialogueKey: 'pulaha', imagePoss: { x: 2, y: 0 }, tint: 'rgba(60,160,120,0.28)' }),
+    new NPC(104, 'sage', 'Kratu', 76, 22, { dialogueKey: 'kratu', imagePoss: { x: 3, y: 0 }, tint: 'rgba(160,110,70,0.28)' }),
+    new NPC(105, 'sage', 'Angiras', 64, 50, { dialogueKey: 'angiras', imagePoss: { x: 0, y: 0 }, tint: 'rgba(220,90,60,0.28)' }),
+    new NPC(106, 'sage', 'Marichi', 20, 26, { dialogueKey: 'marichi', imagePoss: { x: 1, y: 0 }, tint: 'rgba(220,200,80,0.28)' }),
+    new NPC(107, 'sage', 'Atri', 22, 60, { dialogueKey: 'atri', imagePoss: { x: 2, y: 0 }, tint: 'rgba(130,80,180,0.28)' }),
+    new NPC(108, 'sage', 'Vashistha', 64, 84, { dialogueKey: 'vashistha', imagePoss: { x: 3, y: 0 }, tint: 'rgba(60,160,160,0.28)' }),
+    new NPC(109, 'sage', 'Daksha', 105, 36, { dialogueKey: 'daksha', imagePoss: { x: 0, y: 0 }, tint: 'rgba(200,110,40,0.28)' })
   ];
 }
 
@@ -267,6 +302,7 @@ export function createCivilians() {
     profession: 'farmer',
     dialogueKey: 'farmer',
     imagePoss: { x: 1, y: 0 },
+    tint: 'rgba(100,180,80,0.32)',
     schedule: {
       6: { x: 51, y: 115, state: 'working' },
       17: { x: 56, y: 110, state: 'idle' },
@@ -278,6 +314,7 @@ export function createCivilians() {
     profession: 'potter',
     dialogueKey: 'potter',
     imagePoss: { x: 2, y: 0 },
+    tint: 'rgba(210,100,130,0.32)',
     schedule: {
       6: { x: 67, y: 118, state: 'working' },
       17: { x: 64, y: 110, state: 'idle' },
@@ -289,6 +326,7 @@ export function createCivilians() {
     profession: 'weaver',
     dialogueKey: 'weaver',
     imagePoss: { x: 3, y: 0 },
+    tint: 'rgba(90,90,180,0.32)',
     schedule: {
       6: { x: 70, y: 112, state: 'working' },
       17: { x: 72, y: 110, state: 'idle' },
@@ -300,6 +338,7 @@ export function createCivilians() {
     profession: 'trader',
     dialogueKey: 'trader',
     imagePoss: { x: 0, y: 0 },
+    tint: 'rgba(200,170,50,0.32)',
     schedule: {
       8: { x: 64, y: 112, state: 'working' },
       17: { x: 60, y: 106, state: 'idle' },
@@ -315,34 +354,34 @@ export function createSagesForMap(mapId) {
   const list = [];
   
   if (mapId === 1) { // First-life guide beside the village spawn
-    list.push(new NPC(101, 'sage', 'Bhrigu', 40, 67, { dialogueKey: 'bhrigu', imagePoss: { x: 0, y: 0 } }));
+    list.push(new NPC(101, 'sage', 'Bhrigu', 40, 67, { dialogueKey: 'bhrigu', imagePoss: { x: 0, y: 0 }, tint: 'rgba(210,160,60,0.28)' }));
   }
   else if (mapId === 2) { // Bhrigu's Ashram
-    list.push(new NPC(101, 'sage', 'Bhrigu', 10, 10, { dialogueKey: 'bhrigu', imagePoss: { x: 0, y: 0 } }));
+    list.push(new NPC(101, 'sage', 'Bhrigu', 10, 10, { dialogueKey: 'bhrigu', imagePoss: { x: 0, y: 0 }, tint: 'rgba(210,160,60,0.28)' }));
   }
   else if (mapId === 19) { // Mahameru Hermitage (Pulastya)
-    list.push(new NPC(102, 'sage', 'Pulastya', 8, 8, { dialogueKey: 'pulastya', imagePoss: { x: 1, y: 0 } }));
+    list.push(new NPC(102, 'sage', 'Pulastya', 8, 8, { dialogueKey: 'pulastya', imagePoss: { x: 1, y: 0 }, tint: 'rgba(80,130,200,0.28)' }));
   }
   else if (mapId === 15) { // Sanctuary of Time (Pulaha)
-    list.push(new NPC(103, 'sage', 'Pulaha', 16, 16, { dialogueKey: 'pulaha', imagePoss: { x: 2, y: 0 } }));
+    list.push(new NPC(103, 'sage', 'Pulaha', 16, 16, { dialogueKey: 'pulaha', imagePoss: { x: 2, y: 0 }, tint: 'rgba(60,160,120,0.28)' }));
   }
   else if (mapId === 6) { // Sacred Grove Entrance (Kratu)
-    list.push(new NPC(104, 'sage', 'Kratu', 40, 42, { dialogueKey: 'kratu', imagePoss: { x: 3, y: 0 } }));
+    list.push(new NPC(104, 'sage', 'Kratu', 40, 42, { dialogueKey: 'kratu', imagePoss: { x: 3, y: 0 }, tint: 'rgba(160,110,70,0.28)' }));
   }
   else if (mapId === 13) { // Crag Heights (Angiras)
-    list.push(new NPC(105, 'sage', 'Angiras', 20, 20, { dialogueKey: 'angiras', imagePoss: { x: 0, y: 0 } }));
+    list.push(new NPC(105, 'sage', 'Angiras', 20, 20, { dialogueKey: 'angiras', imagePoss: { x: 0, y: 0 }, tint: 'rgba(220,90,60,0.28)' }));
   }
   else if (mapId === 20) { // Silent Peak Summit (Marichi)
-    list.push(new NPC(106, 'sage', 'Marichi', 20, 20, { dialogueKey: 'marichi', imagePoss: { x: 1, y: 0 } }));
+    list.push(new NPC(106, 'sage', 'Marichi', 20, 20, { dialogueKey: 'marichi', imagePoss: { x: 1, y: 0 }, tint: 'rgba(220,200,80,0.28)' }));
   }
   else if (mapId === 21) { // Temple of Vows Altar (Atri)
-    list.push(new NPC(107, 'sage', 'Atri', 40, 45, { dialogueKey: 'atri', imagePoss: { x: 2, y: 0 } }));
+    list.push(new NPC(107, 'sage', 'Atri', 40, 45, { dialogueKey: 'atri', imagePoss: { x: 2, y: 0 }, tint: 'rgba(130,80,180,0.28)' }));
   }
   else if (mapId === 7) { // Vashistha's Hermitage
-    list.push(new NPC(108, 'sage', 'Vashistha', 10, 10, { dialogueKey: 'vashistha', imagePoss: { x: 3, y: 0 } }));
+    list.push(new NPC(108, 'sage', 'Vashistha', 10, 10, { dialogueKey: 'vashistha', imagePoss: { x: 3, y: 0 }, tint: 'rgba(60,160,160,0.28)' }));
   }
   else if (mapId === 11) { // Volcanic Forge (Daksha)
-    list.push(new NPC(109, 'sage', 'Daksha', 12, 12, { dialogueKey: 'daksha', imagePoss: { x: 0, y: 0 } }));
+    list.push(new NPC(109, 'sage', 'Daksha', 12, 12, { dialogueKey: 'daksha', imagePoss: { x: 0, y: 0 }, tint: 'rgba(200,110,40,0.28)' }));
   }
   
   return list;
@@ -357,6 +396,7 @@ export function createCiviliansForMap(mapId) {
       profession: 'farmer',
       dialogueKey: 'farmer',
       imagePoss: { x: 1, y: 0 },
+      tint: 'rgba(100,180,80,0.32)',
       schedule: {
         6: { x: 30, y: 70, state: 'working' },  // farmland
         12: { state: 'idle' },                   // afternoon wandering
@@ -370,6 +410,7 @@ export function createCiviliansForMap(mapId) {
       profession: 'potter',
       dialogueKey: 'potter',
       imagePoss: { x: 2, y: 0 },
+      tint: 'rgba(210,100,130,0.32)',
       schedule: {
         6: { x: 55, y: 55, state: 'working' },
         12: { state: 'idle' },
@@ -383,6 +424,7 @@ export function createCiviliansForMap(mapId) {
       profession: 'weaver',
       dialogueKey: 'weaver',
       imagePoss: { x: 3, y: 0 },
+      tint: 'rgba(90,90,180,0.32)',
       schedule: {
         6: { x: 20, y: 30, state: 'working' },
         12: { state: 'idle' },
@@ -396,6 +438,7 @@ export function createCiviliansForMap(mapId) {
       profession: 'trader',
       dialogueKey: 'trader',
       imagePoss: { x: 0, y: 0 },
+      tint: 'rgba(200,170,50,0.32)',
       schedule: {
         8: { x: 60, y: 20, state: 'working' },
         12: { state: 'idle' },
