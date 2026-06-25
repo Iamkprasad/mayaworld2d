@@ -3,10 +3,23 @@
 
 import { MAPS_CONFIG } from '../data/maps.js';
 
+// sprites.png tile index mapping — 114-column grid, 17px stride
+// Index = row * 114 + col + 1 (1-based)
+function spTile(col, row) { return row * 114 + col + 1; }
+
+// Helper to convert 61-col backgrounds.png index to 114-col sprites.png index
+// Used for DECOS that share layout with backgrounds.png
+function convert61to114(idx) {
+  if (!idx || idx <= 0) return 0;
+  const col = (idx - 1) % 61;
+  const row = Math.floor((idx - 1) / 61);
+  return row * 114 + col + 1;
+}
+
 // Shared tile sheet — all TileMap instances reuse this single Image
 const _sharedTileSheet = new Image();
-_sharedTileSheet.src = 'assets/images/backgrounds.png';
-_sharedTileSheet.onerror = () => console.warn('Failed to load tile sheet: assets/images/backgrounds.png');
+_sharedTileSheet.src = 'assets/images/sprites.png';
+_sharedTileSheet.onerror = () => console.warn('Failed to load tile sheet: assets/images/sprites.png');
 let _sharedTileSheetReady = false;
 _sharedTileSheet.onload = () => { _sharedTileSheetReady = true; };
 
@@ -25,8 +38,8 @@ export class TileMap {
     this.theme = config.theme;
     this.type = config.type;
     this.warps = config.warps || [];
-    this.floorTile = config.floorTile || 480;
-    this.wallTile = config.wallTile || 464;
+    this.floorTile = convert61to114(config.floorTile || 480);
+    this.wallTile = convert61to114(config.wallTile || 464);
 
     // Grid arrays: base tiles (ground) and decoration tiles (obstacles/events)
     this.baseGrid = [];
@@ -47,22 +60,22 @@ export class TileMap {
       VOID: 9
     };
 
-    // Decoration assets matching backgrounds.png (61-col grid, 17px stride)
+    // Decoration assets matching sprites.png (114-col grid, 17px stride)
     this.DECOS = {
       EMPTY: 0,
-      TREE: 24,         // GBA Green tree
-      WALL: 74,         // Basalt rock
-      TEMPLE_WALL: 342, // Marble pillar wall
-      BRIDGE: 140,      // Wooden bridge board
-      ALTAR: 275,       // Sacred altar pedestal
-      SHRINE: 624,      // Red roof shrine structure
-      RUINED_COL: 323,  // Broken pillar ruins
-      PORTAL: 1254,     // Cave mouth / portal entrance
-      CROPS: 63,        // Farming crops
-      FORGE: 368,       // Blacksmith anvil/furnace
-      BOOKSHELF: 101,   // Hermitage bookshelf
-      SIGNBOARD: 25,    // GBA readable sign
-      CHEST: 324        // Chest / relic trunk
+      TREE: convert61to114(24),         // GBA Green tree
+      WALL: convert61to114(74),         // Basalt rock
+      TEMPLE_WALL: convert61to114(342), // Marble pillar wall
+      BRIDGE: convert61to114(140),      // Wooden bridge board
+      ALTAR: convert61to114(275),       // Sacred altar pedestal
+      SHRINE: convert61to114(624),      // Red roof shrine structure
+      RUINED_COL: convert61to114(323),  // Broken pillar ruins
+      PORTAL: convert61to114(1254),     // Cave mouth / portal entrance
+      CROPS: convert61to114(63),        // Farming crops
+      FORGE: convert61to114(368),       // Blacksmith anvil/furnace
+      BOOKSHELF: convert61to114(101),   // Hermitage bookshelf
+      SIGNBOARD: convert61to114(25),    // GBA readable sign
+      CHEST: convert61to114(324)        // Chest / relic trunk
     };
 
     // Use shared tile sheet — no per-map Image allocation
@@ -667,7 +680,7 @@ export class TileMap {
         const c = startCol + dc;
         const r = startRow + dr;
         const idx = (sy + dr) * this.width + (sx + dc);
-        this.ruinsGrid[idx] = r * 61 + c + 1;
+        this.ruinsGrid[idx] = r * 114 + c + 1;
       }
     }
   }
@@ -682,7 +695,7 @@ export class TileMap {
         const c = startCol + dc;
         const r = startRow + dr;
         const idx = (sy + dr) * this.width + (sx + dc);
-        this.ruinsGrid[idx] = r * 61 + c + 1;
+        this.ruinsGrid[idx] = r * 114 + c + 1;
       }
     }
   }
@@ -697,7 +710,7 @@ export class TileMap {
         const c = startCol + dc;
         const r = startRow + dr;
         const idx = (sy + dr) * this.width + (sx + dc);
-        this.ruinsGrid[idx] = r * 61 + c + 1;
+        this.ruinsGrid[idx] = r * 114 + c + 1;
       }
     }
   }
@@ -778,8 +791,8 @@ export class TileMap {
   }
 
   drawGBATile(ctx, tileIndex, dx, dy) {
-    const col = (tileIndex - 1) % 61;
-    const row = Math.floor((tileIndex - 1) / 61);
+    const col = (tileIndex - 1) % 114;
+    const row = Math.floor((tileIndex - 1) / 114);
     
     const srcX = col * 17;
     const srcY = row * 17;
@@ -793,14 +806,17 @@ export class TileMap {
 
   getTileIndexForType(type) {
     switch(type) {
-      case this.TILES.WATER: return 54;
-      case this.TILES.GRASS: return 1;
-      case this.TILES.SAND: return 29;
-      case this.TILES.DIRT: return this.type === 'interior' ? this.floorTile : 38;
-      case this.TILES.STONE: return 33;
-      case this.TILES.LAVA: return 367;
-      case this.TILES.CORRUPTED: return 2512;
-      default: return 1;
+      case this.TILES.WATER:     return spTile(94, 0);   // idx 95 — blue water
+      case this.TILES.GRASS:     return spTile(1, 0);     // idx 2 — rich green grass
+      case this.TILES.SAND:      return spTile(63, 6);    // idx 748 — tan sand
+      case this.TILES.DIRT:      return this.type === 'interior' ? this.floorTile : spTile(43, 4); // idx 500 — brown dirt
+      case this.TILES.STONE:     return spTile(40, 0);    // idx 41 — neutral gray stone
+      case this.TILES.LAVA:      return spTile(6, 109);   // idx 12433 — red lava
+      case this.TILES.CORRUPTED: return spTile(14, 1);    // idx 129 — dark red corrupted
+      case this.TILES.SNOW:      return spTile(20, 0);    // idx 21 — white snow
+      case this.TILES.ICE:       return spTile(33, 1);    // idx 148 — purple ice
+      case this.TILES.VOID:      return spTile(71, 8);    // idx 984 — near-black void
+      default:                   return spTile(1, 0);     // default to grass
     }
   }
 
@@ -847,30 +863,27 @@ export class TileMap {
   drawDeco(ctx, deco, px, py) {
     if (deco === this.DECOS.SHRINE) {
       const ts = this.tileSize;
-      // Draw 3x3 red-roof building (Cols 1,2,3 of Rows 5,6,7 starting at 307)
-      // Row 5: 307, 308, 309
-      this.drawGBATile(ctx, 307, px - ts, py - ts);
-      this.drawGBATile(ctx, 308, px, py - ts);
-      this.drawGBATile(ctx, 309, px + ts, py - ts);
-      // Row 6: 368, 369, 370
-      this.drawGBATile(ctx, 368, px - ts, py);
-      this.drawGBATile(ctx, 369, px, py);
-      this.drawGBATile(ctx, 370, px + ts, py);
-      // Row 7: 429, 430, 431
-      this.drawGBATile(ctx, 429, px - ts, py + ts);
-      this.drawGBATile(ctx, 430, px, py + ts);
-      this.drawGBATile(ctx, 431, px + ts, py + ts);
+      // Draw 3x3 red-roof building (Cols 1,2,3 of Rows 5,6,7 starting at 307 on 61-col)
+      this.drawGBATile(ctx, convert61to114(307), px - ts, py - ts);
+      this.drawGBATile(ctx, convert61to114(308), px, py - ts);
+      this.drawGBATile(ctx, convert61to114(309), px + ts, py - ts);
+      this.drawGBATile(ctx, convert61to114(368), px - ts, py);
+      this.drawGBATile(ctx, convert61to114(369), px, py);
+      this.drawGBATile(ctx, convert61to114(370), px + ts, py);
+      this.drawGBATile(ctx, convert61to114(429), px - ts, py + ts);
+      this.drawGBATile(ctx, convert61to114(430), px, py + ts);
+      this.drawGBATile(ctx, convert61to114(431), px + ts, py + ts);
     } else {
       this.drawGBATile(ctx, deco, px, py);
     }
   }
 
   updateEpochOverlays(epochId) {
-    let targetSrc = 'assets/images/backgrounds.png';
+    let targetSrc = 'assets/images/sprites.png';
     if (epochId >= 6) {
-      targetSrc = 'assets/images/backgrounds_corrupted.png';
+      targetSrc = 'assets/images/sprites_corrupted.png';
     } else if (epochId >= 4) {
-      targetSrc = 'assets/images/backgrounds_autumn.png';
+      targetSrc = 'assets/images/sprites_autumn.png';
     }
     
     const currentSrc = this.tileSheet.src;
