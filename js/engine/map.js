@@ -3,18 +3,7 @@
 
 import { MAPS_CONFIG } from '../data/maps.js';
 
-// sprites.png tile index mapping — 114-column grid, 17px stride
-// Index = row * 114 + col + 1 (1-based)
-function spTile(col, row) { return row * 114 + col + 1; }
-
-// Helper to convert 61-col backgrounds.png index to 114-col sprites.png index
-// Used for DECOS that share layout with backgrounds.png
-function convert61to114(idx) {
-  if (!idx || idx <= 0) return 0;
-  const col = (idx - 1) % 61;
-  const row = Math.floor((idx - 1) / 61);
-  return row * 114 + col + 1;
-}
+// sprites.png tile index — direct 1-based index into 114-col grid
 
 // Shared tile sheet — all TileMap instances reuse this single Image
 const _sharedTileSheet = new Image();
@@ -38,8 +27,8 @@ export class TileMap {
     this.theme = config.theme;
     this.type = config.type;
     this.warps = config.warps || [];
-    this.floorTile = convert61to114(config.floorTile || 480);
-    this.wallTile = convert61to114(config.wallTile || 464);
+    this.floorTile = config.floorTile || 1964;
+    this.wallTile = config.wallTile || 127;
 
     // Grid arrays: base tiles (ground) and decoration tiles (obstacles/events)
     this.baseGrid = [];
@@ -63,19 +52,19 @@ export class TileMap {
     // Decoration assets matching sprites.png (114-col grid, 17px stride)
     this.DECOS = {
       EMPTY: 0,
-      TREE: convert61to114(24),         // GBA Green tree
-      WALL: convert61to114(74),         // Basalt rock
-      TEMPLE_WALL: convert61to114(342), // Marble pillar wall
-      BRIDGE: convert61to114(140),      // Wooden bridge board
-      ALTAR: convert61to114(275),       // Sacred altar pedestal
-      SHRINE: convert61to114(624),      // Red roof shrine structure
-      RUINED_COL: convert61to114(323),  // Broken pillar ruins
-      PORTAL: convert61to114(1254),     // Cave mouth / portal entrance
-      CROPS: convert61to114(63),        // Farming crops
-      FORGE: convert61to114(368),       // Blacksmith anvil/furnace
-      BOOKSHELF: convert61to114(101),   // Hermitage bookshelf
-      SIGNBOARD: convert61to114(25),    // GBA readable sign
-      CHEST: convert61to114(324)        // Chest / relic trunk
+      TREE: 801,
+      WALL: 127,
+      TEMPLE_WALL: 668,
+      BRIDGE: 1964,
+      ALTAR: 668,
+      SHRINE: 1400,
+      RUINED_COL: 668,
+      PORTAL: 95,
+      CROPS: 801,
+      FORGE: 127,
+      BOOKSHELF: 1964,
+      SIGNBOARD: 1964,
+      CHEST: 1964
     };
 
     // Use shared tile sheet — no per-map Image allocation
@@ -132,111 +121,110 @@ export class TileMap {
     else if (this.type === 'village') {
       this.baseGrid.fill(this.TILES.GRASS);
 
-      // Winding River on left
+      // --- River on the left side ---
       for (let y = 0; y < this.height; y++) {
-        const rx = Math.floor(18 + Math.sin(y * 0.15) * 4);
-        for (let x = rx - 4; x <= rx + 4; x++) {
-          const idx = y * this.width + x;
-          this.baseGrid[idx] = this.TILES.WATER;
+        const rx = Math.floor(15 + Math.sin(y * 0.12) * 3);
+        for (let x = rx - 3; x <= rx + 3; x++) {
+          if (x >= 0 && x < this.width) {
+            this.baseGrid[y * this.width + x] = this.TILES.WATER;
+          }
         }
-        this.baseGrid[y * this.width + (rx - 5)] = this.TILES.SAND;
-        this.baseGrid[y * this.width + (rx + 5)] = this.TILES.SAND;
+        if (rx - 4 >= 0) this.baseGrid[y * this.width + (rx - 4)] = this.TILES.SAND;
+        if (rx + 4 < this.width) this.baseGrid[y * this.width + (rx + 4)] = this.TILES.SAND;
       }
 
-      // Bridge crossing the river in the middle
-      for (let y = 38; y <= 42; y++) {
-        const rx = Math.floor(18 + Math.sin(y * 0.15) * 4);
-        for (let x = rx - 4; x <= rx + 4; x++) {
-          const idx = y * this.width + x;
-          this.baseGrid[idx] = this.TILES.GRASS;
-          this.decoGrid[idx] = this.DECOS.BRIDGE;
+      // --- Bridge crossing the river (y=38..42) ---
+      const bridgeY = 40;
+      const bridgeRx = Math.floor(15 + Math.sin(bridgeY * 0.12) * 3);
+      for (let y = bridgeY - 2; y <= bridgeY + 2; y++) {
+        for (let x = bridgeRx - 3; x <= bridgeRx + 3; x++) {
+          this.baseGrid[y * this.width + x] = this.TILES.GRASS;
+          this.decoGrid[y * this.width + x] = this.DECOS.BRIDGE;
         }
       }
 
-      // Place GBA buildings aligned with door warps
-      this.carveAshram(9, 19);
-      this.carveGreenHouse(34, 23);
-      this.carveRedHouse(53, 28);
-
-      // Winding pathways (width = 2)
-      this.carvePath(40, 70, 12, 25, 2);
-      this.carvePath(40, 70, 34, 29, 2);
-      this.carvePath(40, 70, 56, 33, 2);
-      this.carvePath(40, 70, 40, 59, 2);
-      this.carvePath(40, 70, 40, 2, 2);
-
-      // Village center square - stone floor around the well
-      for (let y = 32; y <= 38; y++) {
-        for (let x = 36; x <= 44; x++) {
+      // --- Central village square (stone floor) ---
+      const sqX = 32, sqY = 32, sqW = 10, sqH = 10;
+      for (let y = sqY; y < sqY + sqH; y++) {
+        for (let x = sqX; x < sqX + sqW; x++) {
           this.baseGrid[y * this.width + x] = this.TILES.STONE;
         }
       }
 
       // Well at square center
-      this.decoGrid[35 * this.width + 40] = this.DECOS.RUINED_COL;
+      this.decoGrid[(sqY + 5) * this.width + (sqX + 5)] = this.DECOS.RUINED_COL;
 
-      // Farming Crops field
-      for (let y = 12; y <= 18; y++) {
-        for (let x = 44; x <= 52; x++) {
+      // --- Buildings around the square ---
+      // Ashram (hermitage) — north of square
+      this.carveAshram(sqX + 1, sqY - 8);
+
+      // Green house — east of square
+      this.carveGreenHouse(sqX + sqW + 3, sqY + 1);
+
+      // Red house (forge) — south-east of square
+      this.carveRedHouse(sqX + sqW + 2, sqY + sqH + 3);
+
+      // --- Paths connecting entrance → square → buildings ---
+      // Main south path: entrance to square
+      this.carvePath(40, 68, 40, sqY + sqH, 2);
+      // Path from square to ashram door
+      this.carvePath(sqX + 4, sqY - 2, sqX + 4, sqY - 2, 2);
+      // Path from square to green house door
+      this.carvePath(sqX + sqW, sqY + 4, sqX + sqW + 3, sqY + 4, 2);
+      // Path from square to red house door
+      this.carvePath(sqX + sqW, sqY + sqH + 2, sqX + sqW + 2, sqY + sqH + 2, 2);
+      // Path from square west to bridge
+      this.carvePath(sqX, bridgeY, bridgeRx + 4, bridgeY, 2);
+
+      // --- Farm area (northeast) ---
+      for (let y = 8; y <= 16; y++) {
+        for (let x = 50; x <= 60; x++) {
           this.decoGrid[y * this.width + x] = this.DECOS.CROPS;
         }
       }
+      // Path to farm
+      this.carvePath(sqX + 5, sqY, sqX + 5, 8, 2);
 
-      // Trees framing the village
+      // --- Market stalls near square ---
+      this.decoGrid[(sqY - 1) * this.width + sqX] = this.DECOS.CHEST;
+      this.decoGrid[(sqY - 1) * this.width + sqX + sqW - 1] = this.DECOS.CHEST;
+      this.decoGrid[(sqY + sqH) * this.width + sqX] = this.DECOS.SIGNBOARD;
+      this.decoGrid[(sqY + sqH) * this.width + sqX + sqW - 1] = this.DECOS.SIGNBOARD;
+
+      // --- Trees framing the village ---
       for (let y = 0; y < this.height; y++) {
         for (let x = 0; x < this.width; x++) {
           const idx = y * this.width + x;
           if (this.baseGrid[idx] !== this.TILES.GRASS) continue;
           if (this.decoGrid[idx] !== this.DECOS.EMPTY) continue;
-          if (this.ruinsGrid[idx] > 0) continue;
-          // Clusters of trees along edges and between buildings
-          const edgeDist = Math.min(x, this.width - x, y, this.height - y);
+          const edgeDist = Math.min(x, this.width - 1 - x, y, this.height - 1 - y);
           if (edgeDist < 3 && Math.random() < 0.6) {
             this.decoGrid[idx] = this.DECOS.TREE;
-          }
-          // Scattered trees in open areas
-          if (Math.random() < 0.04) {
+          } else if (Math.random() < 0.03) {
             this.decoGrid[idx] = this.DECOS.TREE;
           }
         }
       }
 
-      // Village entrance gate at south path
-      this.decoGrid[69 * this.width + 39] = this.DECOS.WALL;
-      this.decoGrid[69 * this.width + 41] = this.DECOS.WALL;
-      this.decoGrid[70 * this.width + 39] = this.DECOS.WALL;
-      this.decoGrid[70 * this.width + 41] = this.DECOS.WALL;
-      this.decoGrid[68 * this.width + 39] = this.DECOS.SIGNBOARD;
-      this.decoGrid[68 * this.width + 41] = this.DECOS.SIGNBOARD;
-
-      // Spawn landing (small stone area where player appears)
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          this.baseGrid[(70 + dy) * this.width + (40 + dx)] = this.TILES.STONE;
-        }
-      }
-      this.decoGrid[70 * this.width + 40] = this.DECOS.EMPTY;
-      this.decoGrid[69 * this.width + 40] = this.DECOS.EMPTY;
-      this.decoGrid[71 * this.width + 40] = this.DECOS.WALL;
-
-      // Entrance lantern posts
+      // --- Village entrance at south ---
+      this.decoGrid[67 * this.width + 39] = this.DECOS.WALL;
+      this.decoGrid[67 * this.width + 41] = this.DECOS.WALL;
       this.decoGrid[68 * this.width + 38] = this.DECOS.RUINED_COL;
       this.decoGrid[68 * this.width + 42] = this.DECOS.RUINED_COL;
-      this.decoGrid[66 * this.width + 37] = this.DECOS.TREE;
-      this.decoGrid[66 * this.width + 43] = this.DECOS.TREE;
-      this.decoGrid[72 * this.width + 38] = this.DECOS.TREE;
-      this.decoGrid[72 * this.width + 42] = this.DECOS.TREE;
+      this.decoGrid[67 * this.width + 40] = this.DECOS.SIGNBOARD;
 
-      // Market stalls near center square
-      this.decoGrid[31 * this.width + 36] = this.DECOS.CHEST;
-      this.decoGrid[31 * this.width + 44] = this.DECOS.CHEST;
-      this.decoGrid[39 * this.width + 36] = this.DECOS.SIGNBOARD;
-      this.decoGrid[39 * this.width + 44] = this.DECOS.SIGNBOARD;
+      // Spawn stone pad
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          this.baseGrid[(69 + dy) * this.width + (40 + dx)] = this.TILES.STONE;
+          this.decoGrid[(69 + dy) * this.width + (40 + dx)] = this.DECOS.EMPTY;
+        }
+      }
 
       // Lanterns along main path
-      const lanternPositions = [[40, 55], [40, 60], [40, 65], [38, 33], [42, 33]];
-      for (const [lx, ly] of lanternPositions) {
-        this.decoGrid[ly * this.width + lx] = this.DECOS.RUINED_COL;
+      for (const ly of [50, 55, 60, 65]) {
+        this.decoGrid[ly * this.width + 39] = this.DECOS.RUINED_COL;
+        this.decoGrid[ly * this.width + 41] = this.DECOS.RUINED_COL;
       }
     } 
     
@@ -656,63 +644,40 @@ export class TileMap {
   }
 
   carveHouse(sx, sy, w, h) {
+    this.carveBuilding(sx, sy, w, h, null);
+  }
+
+  carveBuilding(sx, sy, w, h, interiorDeco) {
+    const doorX = sx + Math.floor(w / 2);
     for (let y = sy; y < sy + h; y++) {
       for (let x = sx; x < sx + w; x++) {
         const idx = y * this.width + x;
-        if (y === sy) {
-          // Roof tiles
-          this.ruinsGrid[idx] = 1;
+        const isPerim = y === sy || y === sy + h - 1 || x === sx || x === sx + w - 1;
+        const isDoor = x === doorX && y === sy + h - 1;
+        if (isPerim && !isDoor) {
+          this.decoGrid[idx] = this.DECOS.WALL;
         } else {
-          // Wall tiles
-          this.ruinsGrid[idx] = 3;
+          this.baseGrid[idx] = this.TILES.DIRT;
         }
       }
+    }
+    if (interiorDeco) {
+      const ix = sx + Math.floor(w / 2);
+      const iy = sy + 1;
+      this.decoGrid[iy * this.width + ix] = interiorDeco;
     }
   }
 
   carveAshram(sx, sy) {
-    const w = 7;
-    const h = 6;
-    const startCol = 0;
-    const startRow = 6;
-    for (let dr = 0; dr < h; dr++) {
-      for (let dc = 0; dc < w; dc++) {
-        const c = startCol + dc;
-        const r = startRow + dr;
-        const idx = (sy + dr) * this.width + (sx + dc);
-        this.ruinsGrid[idx] = r * 114 + c + 1;
-      }
-    }
+    this.carveBuilding(sx, sy, 7, 6, this.DECOS.ALTAR);
   }
 
   carveGreenHouse(sx, sy) {
-    const w = 6;
-    const h = 6;
-    const startCol = 24;
-    const startRow = 17;
-    for (let dr = 0; dr < h; dr++) {
-      for (let dc = 0; dc < w; dc++) {
-        const c = startCol + dc;
-        const r = startRow + dr;
-        const idx = (sy + dr) * this.width + (sx + dc);
-        this.ruinsGrid[idx] = r * 114 + c + 1;
-      }
-    }
+    this.carveBuilding(sx, sy, 6, 6, this.DECOS.BOOKSHELF);
   }
 
   carveRedHouse(sx, sy) {
-    const w = 12;
-    const h = 5;
-    const startCol = 16;
-    const startRow = 23;
-    for (let dr = 0; dr < h; dr++) {
-      for (let dc = 0; dc < w; dc++) {
-        const c = startCol + dc;
-        const r = startRow + dr;
-        const idx = (sy + dr) * this.width + (sx + dc);
-        this.ruinsGrid[idx] = r * 114 + c + 1;
-      }
-    }
+    this.carveBuilding(sx, sy, 8, 5, this.DECOS.FORGE);
   }
 
   carvePath(x1, y1, x2, y2, width = 2) {
@@ -806,17 +771,17 @@ export class TileMap {
 
   getTileIndexForType(type) {
     switch(type) {
-      case this.TILES.WATER:     return spTile(94, 0);   // idx 95 — blue water
-      case this.TILES.GRASS:     return spTile(1, 0);     // idx 2 — rich green grass
-      case this.TILES.SAND:      return spTile(63, 6);    // idx 748 — tan sand
-      case this.TILES.DIRT:      return this.type === 'interior' ? this.floorTile : spTile(43, 4); // idx 500 — brown dirt
-      case this.TILES.STONE:     return spTile(40, 0);    // idx 41 — neutral gray stone
-      case this.TILES.LAVA:      return spTile(6, 109);   // idx 12433 — red lava
-      case this.TILES.CORRUPTED: return spTile(14, 1);    // idx 129 — dark red corrupted
-      case this.TILES.SNOW:      return spTile(20, 0);    // idx 21 — white snow
-      case this.TILES.ICE:       return spTile(33, 1);    // idx 148 — purple ice
-      case this.TILES.VOID:      return spTile(71, 8);    // idx 984 — near-black void
-      default:                   return spTile(1, 0);     // default to grass
+      case this.TILES.WATER:     return 95;
+      case this.TILES.GRASS:     return 801;
+      case this.TILES.SAND:      return 29;
+      case this.TILES.DIRT:      return this.type === 'interior' ? this.floorTile : 1964;
+      case this.TILES.STONE:     return 668;
+      case this.TILES.LAVA:      return 127;
+      case this.TILES.CORRUPTED: return 129;
+      case this.TILES.SNOW:      return 21;
+      case this.TILES.ICE:       return 148;
+      case this.TILES.VOID:      return 984;
+      default:                   return 801;
     }
   }
 
@@ -863,16 +828,15 @@ export class TileMap {
   drawDeco(ctx, deco, px, py) {
     if (deco === this.DECOS.SHRINE) {
       const ts = this.tileSize;
-      // Draw 3x3 red-roof building (Cols 1,2,3 of Rows 5,6,7 starting at 307 on 61-col)
-      this.drawGBATile(ctx, convert61to114(307), px - ts, py - ts);
-      this.drawGBATile(ctx, convert61to114(308), px, py - ts);
-      this.drawGBATile(ctx, convert61to114(309), px + ts, py - ts);
-      this.drawGBATile(ctx, convert61to114(368), px - ts, py);
-      this.drawGBATile(ctx, convert61to114(369), px, py);
-      this.drawGBATile(ctx, convert61to114(370), px + ts, py);
-      this.drawGBATile(ctx, convert61to114(429), px - ts, py + ts);
-      this.drawGBATile(ctx, convert61to114(430), px, py + ts);
-      this.drawGBATile(ctx, convert61to114(431), px + ts, py + ts);
+      this.drawGBATile(ctx, 573, px - ts, py - ts);
+      this.drawGBATile(ctx, 574, px, py - ts);
+      this.drawGBATile(ctx, 575, px + ts, py - ts);
+      this.drawGBATile(ctx, 708, px - ts, py);
+      this.drawGBATile(ctx, 1400, px, py);
+      this.drawGBATile(ctx, 710, px + ts, py);
+      this.drawGBATile(ctx, 843, px - ts, py + ts);
+      this.drawGBATile(ctx, 844, px, py + ts);
+      this.drawGBATile(ctx, 845, px + ts, py + ts);
     } else {
       this.drawGBATile(ctx, deco, px, py);
     }
