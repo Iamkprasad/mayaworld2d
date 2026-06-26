@@ -63,12 +63,10 @@ h2{color:#ebd09b;font-size:1rem;margin:16px 0 8px;border-bottom:1px solid #333;p
     <option value="2" selected>2x</option>
     <option value="3">3x</option>
   </select>
+  <button id="export-json" style="margin-left:8px;">Export Mapping JSON</button>
 </div>
 
-<div class="highlight-legend">
-  <span><span class="swatch" style="background:#3ecfab"></span> Base Tile (WATER=54, GRASS=1, SAND=29, DIRT=38, STONE=33, LAVA=367)</span>
-  <span><span class="swatch" style="background:#ebd09b"></span> Deco Tile (TREE=24, WALL=74, CHEST=324, etc.)</span>
-</div>
+<div class="highlight-legend" id="dynamic-legend"></div>
 
 <div class="sheet-section">
   <h2>Backgrounds Tile Sheet (61x235 = 14,335 tiles)</h2>
@@ -135,6 +133,42 @@ h2{color:#ebd09b;font-size:1rem;margin:16px 0 8px;border-bottom:1px solid #333;p
 const BASE_TILES = { WATER: 54, GRASS: 1, SAND: 29, DIRT: 38, STONE: 33, LAVA: 367, CORRUPTED: 2512, SNOW: 7, ICE: 8, VOID: 9 };
 const DECO_TILES = { EMPTY: 0, TREE: 24, WALL: 74, TEMPLE_WALL: 342, BRIDGE: 140, ALTAR: 275, SHRINE: 624, RUINED_COL: 323, PORTAL: 1254, CROPS: 63, FORGE: 368, BOOKSHELF: 101, SIGNBOARD: 25, CHEST: 324 };
 const SHRINE_3x3 = [307,308,309,368,369,370,429,430,431];
+
+// Dynamically generate the legend from tile maps
+function buildLegend() {
+  const legend = document.getElementById('dynamic-legend');
+  if (!legend) return;
+  // Base tiles
+  const baseSpan = document.createElement('span');
+  const baseSwatch = document.createElement('span');
+  baseSwatch.className = 'swatch';
+  baseSwatch.style.background = '#3ecfab';
+  baseSpan.appendChild(baseSwatch);
+  baseSpan.appendChild(document.createTextNode(' Base Tiles: ' + Object.entries(BASE_TILES).map(([k,v])=>`${k}=${v}`).join(', ')));
+  legend.appendChild(baseSpan);
+  // Deco tiles
+  const decoSpan = document.createElement('span');
+  const decoSwatch = document.createElement('span');
+  decoSwatch.className = 'swatch';
+  decoSwatch.style.background = '#ebd09b';
+  decoSpan.appendChild(decoSwatch);
+  decoSpan.appendChild(document.createTextNode(' Deco Tiles: ' + Object.entries(DECO_TILES).map(([k,v])=>`${k}=${v}`).join(', ')));
+  legend.appendChild(decoSpan);
+}
+
+// Export mapping as JSON
+function exportMapping() {
+  const data = {BASE_TILES, DECO_TILES};
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tileset-mapping.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('export-json').addEventListener('click', exportMapping);
 
 const BASE_SET = new Set(Object.values(BASE_TILES));
 const DECO_SET = new Set(Object.values(DECO_TILES));
@@ -385,6 +419,7 @@ document.getElementById('search-box').addEventListener('input', (e) => {
   }
 });
 
+buildLegend();
 loadImages();
 </script>
 </body>

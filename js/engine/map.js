@@ -2,13 +2,20 @@
 // Generates and manages layouts, decoration layers, and collision checks for all 22 maps
 
 import { MAPS_CONFIG } from '../data/maps.js';
+import {
+  TILE_SHEET, TILE_SHEET_AUTUMN, TILE_SHEET_CORRUPTED,
+  GRID_COLS, TILE_STRIDE, TILE_SRC,
+  BASE_TILES, DECO_TILES, SHRINE_3x3, INTERIOR_FLOOR, INTERIOR_WALL,
+  COLLIDABLE_DECOS
+} from '../data/tiles.js';
 
-// sprites.png tile index — direct 1-based index into 114-col grid
+// Tiles are 1-based indices into backgrounds.png (61-col, 17px-stride grid).
+// See js/data/tiles.js for the verified mapping.
 
 // Shared tile sheet — all TileMap instances reuse this single Image
 const _sharedTileSheet = new Image();
-_sharedTileSheet.src = 'assets/images/sprites.png';
-_sharedTileSheet.onerror = () => console.warn('Failed to load tile sheet: assets/images/sprites.png');
+_sharedTileSheet.src = TILE_SHEET;
+_sharedTileSheet.onerror = () => console.warn(`Failed to load tile sheet: ${TILE_SHEET}`);
 let _sharedTileSheetReady = false;
 _sharedTileSheet.onload = () => { _sharedTileSheetReady = true; };
 
@@ -27,15 +34,15 @@ export class TileMap {
     this.theme = config.theme;
     this.type = config.type;
     this.warps = config.warps || [];
-    this.floorTile = config.floorTile || 1964;
-    this.wallTile = config.wallTile || 127;
+    this.floorTile = config.floorTile || INTERIOR_FLOOR;
+    this.wallTile = config.wallTile || INTERIOR_WALL;
 
     // Grid arrays: base tiles (ground) and decoration tiles (obstacles/events)
     this.baseGrid = [];
     this.decoGrid = [];
     this.ruinsGrid = []; // Overlays/Houses
 
-    // Tile Types
+    // Logical terrain types (enum) — mapped to sheet indices in getTileIndexForType
     this.TILES = {
       WATER: 0,
       GRASS: 1,
@@ -49,23 +56,8 @@ export class TileMap {
       VOID: 9
     };
 
-    // Decoration assets matching sprites.png (114-col grid, 17px stride)
-    this.DECOS = {
-      EMPTY: 0,
-      TREE: 801,
-      WALL: 127,
-      TEMPLE_WALL: 668,
-      BRIDGE: 1964,
-      ALTAR: 668,
-      SHRINE: 1400,
-      RUINED_COL: 668,
-      PORTAL: 95,
-      CROPS: 801,
-      FORGE: 127,
-      BOOKSHELF: 1964,
-      SIGNBOARD: 1964,
-      CHEST: 1964
-    };
+    // Verified decoration indices into backgrounds.png (61-col grid). See js/data/tiles.js
+    this.DECOS = { ...DECO_TILES };
 
     // Use shared tile sheet — no per-map Image allocation
     this.tileSheet = _sharedTileSheet;
@@ -641,6 +633,93 @@ export class TileMap {
         }
       }
     }
+
+    // 3. Soften terrain edges (sand shore around water) and scatter natural decor
+    const outdoor = ['village', 'forest', 'dense_forest', 'shrine', 'coastal', 'beach', 'volcano', 'volcano_peaks'];
+    if (outdoor.includes(this.type)) {
+      if (this.type === 'village' || this.type === 'coastal' || this.type === 'beach') {
+        this.shorePass();
+      }
+      this.naturePass();
+    }
+  }
+
+  // Deterministic per-tile pseudo-random in [0,1) — keeps maps stable across reloads
+  rand(x, y, salt = 0) {
+    const n = Math.sin((x * 127.1 + y * 311.7 + salt * 74.7) ) * 43758.5453;
+    return n - Math.floor(n);
+  }
+
+  // Add a 1-tile sand shore where grass meets water → removes hard blocky edges
+  shorePass() {
+    const W = this.width, H = this.height;
+    const toSand = [];
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const idx = y * W + x;
+        if (this.baseGrid[idx] !== this.TILES.GRASS) continue;
+        if (this.decoGrid[idx] !== this.DECOS.EMPTY) continue;
+        let nearWater = false;
+        for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx >= 0 && nx < W && ny >= 0 && ny < H &&
+              this.baseGrid[ny * W + nx] === this.TILES.WATER) { nearWater = true; break; }
+        }
+        if (nearWater) toSand.push(idx);
+      }
+    }
+    for (const idx of toSand) this.baseGrid[idx] = this.TILES.SAND;
+  }
+
+  // Layered scatter of decor with spacing rules:
+  //  - decorative cover (flowers/bush/tuft, walkable) only on open grass
+  //  - obstacles (rock, extra trees) kept clear of paths, warps and buildings
+  naturePass() {
+    const W = this.width, H = this.height;
+    const isOpenGrass = (x, y) => {
+      if (x < 2 || y < 2 || x >= W - 2 || y >= H - 2) return false;
+      const idx = y * W + x;
+      return this.baseGrid[idx] === this.TILES.GRASS &&
+             this.decoGrid[idx] === this.DECOS.EMPTY &&
+             this.ruinsGrid[idx] === 0;
+    };
+    const nearWarp = (x, y) => this.warps.some(w => Math.abs(w.x - x) <= 2 && Math.abs(w.y - y) <= 2);
+    // A tile is "clear" for an obstacle if no path/building/warp sits within `r`
+    const clearForObstacle = (x, y, r) => {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+          const i = ny * W + nx;
+          if (this.baseGrid[i] === this.TILES.DIRT) return false;      // path
+          if (this.ruinsGrid[i] > 0) return false;                     // building
+          if (this.decoGrid[i] === this.DECOS.WALL) return false;      // structure wall
+        }
+      }
+      return !nearWarp(x, y);
+    };
+
+    for (let y = 2; y < H - 2; y++) {
+      for (let x = 2; x < W - 2; x++) {
+        if (!isOpenGrass(x, y)) continue;
+        const idx = y * W + x;
+        const r = this.rand(x, y, this.id);
+
+        // Clustered obstacle decor (extra trees / rocks) away from paths & buildings
+        if (clearForObstacle(x, y, 1)) {
+          const clump = Math.sin(x * 0.25) * Math.sin(y * 0.25); // smooth clumps
+          if (this.type === 'forest' || this.type === 'dense_forest') continue; // forests handle their own trees
+          if (clump > 0.55 && r < 0.18) { this.decoGrid[idx] = this.DECOS.TREE_ALT; continue; }
+          if (r > 0.985) { this.decoGrid[idx] = this.DECOS.ROCK; continue; }
+        }
+
+        // Decorative ground cover (walkable) — denser near the open grass, sparse overall
+        const r2 = this.rand(x, y, this.id + 99);
+        if (r2 < 0.020) this.decoGrid[idx] = this.DECOS.FLOWER;
+        else if (r2 < 0.045) this.decoGrid[idx] = this.DECOS.TUFT;
+        else if (r2 < 0.055) this.decoGrid[idx] = this.DECOS.BUSH;
+      }
+    }
   }
 
   carveHouse(sx, sy, w, h) {
@@ -735,15 +814,9 @@ export class TileMap {
       return true;
     }
 
-    // Check collision decos
+    // Check collision decos (trees, walls, rocks, columns, chests — see tiles.js)
     const deco = this.decoGrid[idx];
-    if (
-      deco === this.DECOS.TREE || 
-      deco === this.DECOS.WALL || 
-      deco === this.DECOS.TEMPLE_WALL || 
-      deco === this.DECOS.RUINED_COL ||
-      deco === this.DECOS.CHEST
-    ) {
+    if (COLLIDABLE_DECOS.includes(deco)) {
       return true;
     }
 
@@ -756,36 +829,44 @@ export class TileMap {
   }
 
   drawGBATile(ctx, tileIndex, dx, dy) {
-    const col = (tileIndex - 1) % 114;
-    const row = Math.floor((tileIndex - 1) / 114);
-    
-    const srcX = col * 17;
-    const srcY = row * 17;
-    
+    if (!tileIndex || tileIndex < 1) return;
+    const col = (tileIndex - 1) % GRID_COLS;
+    const row = Math.floor((tileIndex - 1) / GRID_COLS);
+
+    const srcX = col * TILE_STRIDE;
+    const srcY = row * TILE_STRIDE;
+
     ctx.drawImage(
       this.tileSheet,
-      srcX, srcY, 16, 16, // source
+      srcX, srcY, TILE_SRC, TILE_SRC, // source
       Math.round(dx), Math.round(dy), this.tileSize, this.tileSize // destination
     );
   }
 
   getTileIndexForType(type) {
     switch(type) {
-      case this.TILES.WATER:     return 95;
-      case this.TILES.GRASS:     return 801;
-      case this.TILES.SAND:      return 29;
-      case this.TILES.DIRT:      return this.type === 'interior' ? this.floorTile : 1964;
-      case this.TILES.STONE:     return 668;
-      case this.TILES.LAVA:      return 127;
-      case this.TILES.CORRUPTED: return 129;
-      case this.TILES.SNOW:      return 21;
-      case this.TILES.ICE:       return 148;
-      case this.TILES.VOID:      return 984;
-      default:                   return 801;
+      case this.TILES.WATER:     return BASE_TILES.WATER;
+      case this.TILES.GRASS:     return BASE_TILES.GRASS;
+      case this.TILES.SAND:      return BASE_TILES.SAND;
+      case this.TILES.DIRT:      return this.type === 'interior' ? this.floorTile : BASE_TILES.DIRT;
+      case this.TILES.STONE:     return BASE_TILES.STONE;
+      case this.TILES.LAVA:      return BASE_TILES.LAVA;
+      case this.TILES.CORRUPTED: return BASE_TILES.CORRUPTED;
+      case this.TILES.SNOW:      return BASE_TILES.SNOW;
+      case this.TILES.ICE:       return BASE_TILES.ICE;
+      case this.TILES.VOID:      return BASE_TILES.VOID;
+      default:                   return BASE_TILES.GRASS;
     }
   }
 
   draw(ctx, camera) {
+    // Avoid drawing from a not-yet-decoded tile sheet (blank/garbled first frames)
+    if (!_sharedTileSheetReady && !this.tileSheet.complete) {
+      ctx.fillStyle = this.color || '#0d2b1e';
+      ctx.fillRect(0, 0, camera.width, camera.height);
+      return;
+    }
+
     const camTileX = Math.floor(camera.x / this.tileSize);
     const camTileY = Math.floor(camera.y / this.tileSize);
 
@@ -828,26 +909,27 @@ export class TileMap {
   drawDeco(ctx, deco, px, py) {
     if (deco === this.DECOS.SHRINE) {
       const ts = this.tileSize;
-      this.drawGBATile(ctx, 573, px - ts, py - ts);
-      this.drawGBATile(ctx, 574, px, py - ts);
-      this.drawGBATile(ctx, 575, px + ts, py - ts);
-      this.drawGBATile(ctx, 708, px - ts, py);
-      this.drawGBATile(ctx, 1400, px, py);
-      this.drawGBATile(ctx, 710, px + ts, py);
-      this.drawGBATile(ctx, 843, px - ts, py + ts);
-      this.drawGBATile(ctx, 844, px, py + ts);
-      this.drawGBATile(ctx, 845, px + ts, py + ts);
+      const s = SHRINE_3x3;
+      this.drawGBATile(ctx, s[0], px - ts, py - ts);
+      this.drawGBATile(ctx, s[1], px, py - ts);
+      this.drawGBATile(ctx, s[2], px + ts, py - ts);
+      this.drawGBATile(ctx, s[3], px - ts, py);
+      this.drawGBATile(ctx, s[4], px, py);
+      this.drawGBATile(ctx, s[5], px + ts, py);
+      this.drawGBATile(ctx, s[6], px - ts, py + ts);
+      this.drawGBATile(ctx, s[7], px, py + ts);
+      this.drawGBATile(ctx, s[8], px + ts, py + ts);
     } else {
       this.drawGBATile(ctx, deco, px, py);
     }
   }
 
   updateEpochOverlays(epochId) {
-    let targetSrc = 'assets/images/sprites.png';
+    let targetSrc = TILE_SHEET;
     if (epochId >= 6) {
-      targetSrc = 'assets/images/sprites_corrupted.png';
+      targetSrc = TILE_SHEET_CORRUPTED;
     } else if (epochId >= 4) {
-      targetSrc = 'assets/images/sprites_autumn.png';
+      targetSrc = TILE_SHEET_AUTUMN;
     }
     
     const currentSrc = this.tileSheet.src;

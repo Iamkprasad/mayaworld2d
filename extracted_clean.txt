@@ -1,0 +1,33 @@
+# MayaWorld Tileset Mapping & Game Design Metadata
+Source: tools/tile-inspector.html (matches media__1782409343724.pdf / media__1782409892119.png)
+
+## 1. Base Tiles (Grid background mappings)
+- WATER: 54
+- GRASS: 1
+- SAND: 29
+- DIRT: 38
+- STONE: 33
+- LAVA: 367
+- CORRUPTED: 2512
+- SNOW: 7
+- ICE: 8
+- VOID: 9
+
+## 2. Decoration (Deco) Tiles (Obstacles and interactive objects)
+- EMPTY: 0
+- TREE: 24
+- WALL: 74
+- TEMPLE_WALL: 342
+- BRIDGE: 140
+- ALTAR: 275
+- SHRINE: 624
+- RUINED_COL: 323
+- PORTAL: 1254
+- CROPS: 63
+- FORGE: 368
+- BOOKSHELF: 101
+- SIGNBOARD: 25
+- CHEST: 324
+
+## 3. Special Layouts
+- SHRINE_3x3: [307, 308, 309, 368, 369, 370, 429, 430, 431]
