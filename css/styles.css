@@ -984,9 +984,158 @@ header {
 }
 
 /* ================================================================
+   CINEMATIC INTRO
+   ================================================================ */
+
+/* Letterbox bars — black strips at top and bottom during cinematic */
+.cin-letterbox-top,
+.cin-letterbox-bot {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 0;
+  background: #000;
+  z-index: 55;
+  pointer-events: none;
+  transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cin-letterbox-top { top: 0; }
+.cin-letterbox-bot { bottom: 0; }
+
+/* When cinematic is active, letterbox bars grow */
+body.cinematic-active .cin-letterbox-top,
+body.cinematic-active .cin-letterbox-bot {
+  height: 11%;
+}
+
+/* Cinematic text overlay */
+#cinematic-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 52;
+  pointer-events: none; /* clicks pass through to skip btn below */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 14%;
+}
+#cinematic-overlay.hidden { display: none; }
+
+/* Fade-out transition when cinematic ends */
+#cinematic-overlay.cin-fade-out {
+  animation: cin-fade-out 0.6s ease forwards;
+}
+@keyframes cin-fade-out {
+  to { opacity: 0; }
+}
+
+/* Each act text panel */
+.cin-act {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 14%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0s;
+}
+.cin-act.active {
+  opacity: 1;
+  animation: cin-act-fade 5s ease forwards;
+}
+@keyframes cin-act-fade {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Cinematic narration — main line */
+.cin-narration {
+  font-family: var(--font-serif);
+  font-size: clamp(1.4rem, 3.5vw, 2.2rem);
+  font-weight: 300;
+  color: var(--cream);
+  letter-spacing: 0.01em;
+  text-align: center;
+  line-height: 1.2;
+  text-shadow:
+    0 0 40px rgba(117, 209, 186, 0.4),
+    0 2px 12px rgba(0, 0, 0, 0.8);
+  margin-bottom: 12px;
+}
+.cin-narration.cin-red {
+  color: #e87a6a;
+  text-shadow:
+    0 0 40px rgba(220, 60, 30, 0.6),
+    0 2px 12px rgba(0, 0, 0, 0.9);
+}
+
+/* Cinematic sub-note — second line */
+.cin-subnote {
+  font-family: var(--font-serif);
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+  font-weight: 300;
+  color: rgba(220, 210, 185, 0.7);
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+.cin-subnote.cin-red-sub {
+  color: rgba(230, 130, 100, 0.75);
+}
+
+/* Act 0 epigraph — tiny top text */
+.cin-epigraph {
+  font-family: var(--font-pixel);
+  font-size: 0.52rem;
+  color: rgba(196, 166, 79, 0.55);
+  letter-spacing: 3px;
+  text-align: center;
+}
+/* Act 0 epigraph appears at the top of the screen */
+#cin-act-0 {
+  justify-content: flex-start;
+  padding-top: 15%;
+  padding-bottom: 0;
+}
+
+/* Colour accent spans */
+.cin-gold  { color: var(--gold); }
+.cin-teal  { color: var(--teal-light); }
+
+/* Skip button */
+#cin-skip-btn {
+  position: absolute;
+  bottom: 5%;
+  right: 4%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(196, 166, 79, 0.3);
+  color: rgba(196, 166, 79, 0.65);
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  pointer-events: all;
+  transition: all 0.2s ease;
+  z-index: 60;
+}
+#cin-skip-btn:hover {
+  background: rgba(196, 166, 79, 0.15);
+  color: var(--gold);
+  border-color: var(--gold-border);
+}
+
+/* ================================================================
    INTRO OVERLAY
    ================================================================ */
 #intro-overlay {
+
   position: absolute;
   top: 0;
   left: 0;

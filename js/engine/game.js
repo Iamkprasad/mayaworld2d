@@ -13,6 +13,7 @@ import { VrittiSystem } from '../systems/vritti.js';
 import { RitualSystem } from '../systems/ritual.js';
 import { dialogues } from '../data/dialogues.js';
 import { MAPS_CONFIG } from '../data/maps.js';
+import { CinematicIntro } from './cinematic.js';
 
 const REGIONS = {
   suryanagar: {
@@ -124,20 +125,38 @@ class GameApp {
     // Speed management
     this.speedMultiplier = 1.0;
 
+    // Cinematic intro system
+    this.cinematic = new CinematicIntro();
+
     // Setup bindings
     this.initUI();
     this.restartLife(null, this.journal.data.currentEpoch);
-    
-    // Start in intro state
-    this.state = 'intro';
-    const introOverlay = document.getElementById('intro-overlay');
-    if (introOverlay) {
-      introOverlay.classList.remove('hidden');
+
+    // Decide whether to play the cinematic or go straight to the title screen.
+    // Returning players (livesCount > 0 = they've played before) skip to title.
+    const isFirstVisit = this.journal.data.livesCount <= 1;
+    if (isFirstVisit) {
+      this.state = 'cinematic';
+      document.body.classList.add('cinematic-active');
+      this.cinematic.start(this.canvas, this.ctx, () => this._onCinematicComplete());
+    } else {
+      // Returning player — show title overlay immediately
+      this.state = 'intro';
+      const introOverlay = document.getElementById('intro-overlay');
+      if (introOverlay) introOverlay.classList.remove('hidden');
     }
-    
+
     // Start loop
     this.lastTime = 0;
     requestAnimationFrame((t) => this.loop(t));
+  }
+
+  /** Called when the cinematic finishes (or is skipped). Shows the title screen. */
+  _onCinematicComplete() {
+    document.body.classList.remove('cinematic-active');
+    this.state = 'intro';
+    const introOverlay = document.getElementById('intro-overlay');
+    if (introOverlay) introOverlay.classList.remove('hidden');
   }
 
   _ensureMap(mapId) {
@@ -531,6 +550,9 @@ class GameApp {
   }
 
   handleKeyDown(code) {
+    // During cinematic the CinematicIntro class manages its own Escape/Enter handler.
+    if (this.state === 'cinematic') return;
+
     if (this.state === 'intro') {
       if (code === 'Enter' || code === 'KeyZ') {
         this.startGameFromIntro();
@@ -1113,6 +1135,12 @@ class GameApp {
   }
 
   update(deltaTime) {
+    // Cinematic state: delegate update to the cinematic system
+    if (this.state === 'cinematic') {
+      this.cinematic.update(deltaTime);
+      return;
+    }
+
     this.updateVFX(deltaTime);
 
     if (this.state === 'transition') {
@@ -1567,11 +1595,16 @@ class GameApp {
   render() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    if (this.state === 'cinematic') {
+      // Cinematic state: delegate rendering entirely to the cinematic system
+      this.cinematic.render();
+      return;
+    }
+
     if (this.state === 'intro') {
-      // Intro state renders custom dark canvas behind overlay with green stars
+      // Intro state renders a calm dark canvas with ambient teal stars behind the overlay
       this.ctx.fillStyle = '#05050f';
       this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-      
       this.ctx.fillStyle = 'rgba(117, 209, 186, 0.35)';
       for (let i = 0; i < 20; i++) {
         const x = (Math.sin(Date.now() * 0.0005 + i) * 0.5 + 0.5) * this.canvas.width;

@@ -141,7 +141,41 @@
             </div>
           </div>
 
-          <!-- Intro Overlay -->
+          <!-- Cinematic Letterbox Bars -->
+          <div class="cin-letterbox-top" id="cin-letterbox-top"></div>
+          <div class="cin-letterbox-bot" id="cin-letterbox-bot"></div>
+
+          <!-- Cinematic Overlay (acts 0-4 text panels) -->
+          <div id="cinematic-overlay" class="hidden">
+            <!-- Act 0: Void / Title build -->
+            <div class="cin-act" id="cin-act-0">
+              <div class="cin-epigraph">AN ANCIENT CHRONICLES PRESENTATION</div>
+            </div>
+            <!-- Act 1: Creation -->
+            <div class="cin-act" id="cin-act-1">
+              <div class="cin-narration">In the age before memory…</div>
+              <div class="cin-subnote">an island rose at the navel of the sea.</div>
+            </div>
+            <!-- Act 2: Sages -->
+            <div class="cin-act" id="cin-act-2">
+              <div class="cin-narration">Nine Sages held the law of <span class="cin-gold">Ṛta</span></div>
+              <div class="cin-subnote">— balance, truth, and the eternal flame of duty.</div>
+            </div>
+            <!-- Act 3: Fall -->
+            <div class="cin-act" id="cin-act-3">
+              <div class="cin-narration cin-red">Then the Tenth Sage fell.</div>
+              <div class="cin-subnote cin-red-sub">Tamas embraced the void. He became <strong>Mayasur</strong>.</div>
+            </div>
+            <!-- Act 4: Player -->
+            <div class="cin-act" id="cin-act-4">
+              <div class="cin-narration">You are <span class="cin-teal">Samat</span>.</div>
+              <div class="cin-subnote">Born once more into the cycle. Seek. Remember. Balance.</div>
+            </div>
+            <!-- Skip hint -->
+            <button id="cin-skip-btn">SKIP  ▶</button>
+          </div>
+
+          <!-- Intro Overlay (title screen — shown after cinematic) -->
           <div id="intro-overlay" class="hidden">
             <div class="intro-glass">
               <div class="intro-header">

@@ -1,8 +1,8 @@
 // Browser-free boot smoke test.
 // Boots the full game in jsdom with a stubbed 2D canvas context and asserts it
-// reaches the intro state without throwing — the closest proof, short of a real
-// browser, that the title/intro actually appears (a throw during map build is
-// exactly what would hide the intro overlay).
+// reaches either the cinematic state (first visit) or the intro-overlay state
+// (returning player) without throwing — the closest proof, short of a real
+// browser, that the game boots cleanly.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
@@ -52,7 +52,7 @@ describe('game boot', () => {
     globalThis.HTMLElement = window.HTMLElement;
   });
 
-  it('boots to intro state without throwing', async () => {
+  it('boots without throwing and shows the opening screen', async () => {
     // Importing game.js registers a window 'load' handler that constructs GameApp.
     await import('../engine/game.js');
 
@@ -64,9 +64,17 @@ describe('game boot', () => {
     }
     expect(threw, threw && threw.stack).toBeNull();
 
-    // Intro overlay should be visible (not hidden) right after boot.
-    const overlay = dom.window.document.getElementById('intro-overlay');
-    expect(overlay).not.toBeNull();
-    expect(overlay.classList.contains('hidden')).toBe(false);
+    // After boot the game is in either 'cinematic' (first visit) or 'intro'
+    // (returning player). In either case at least one opening screen element
+    // must be present in the DOM.
+    const cinematicOverlay = dom.window.document.getElementById('cinematic-overlay');
+    const introOverlay     = dom.window.document.getElementById('intro-overlay');
+
+    expect(cinematicOverlay || introOverlay).not.toBeNull();
+
+    // At least one of the two overlays should be visible (not hidden).
+    const cinematicVisible = cinematicOverlay && !cinematicOverlay.classList.contains('hidden');
+    const introVisible     = introOverlay     && !introOverlay.classList.contains('hidden');
+    expect(cinematicVisible || introVisible).toBe(true);
   });
 });
