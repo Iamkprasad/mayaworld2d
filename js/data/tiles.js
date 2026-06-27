@@ -72,3 +72,14 @@ export const SHRINE_3x3 = [307, 308, 309, 368, 369, 370, 429, 430, 431];
 // Interior defaults (wood floor / brick wall) on the 61-col grid
 export const INTERIOR_FLOOR = 132; // brown wood-ish floor
 export const INTERIOR_WALL = 74;   // stone/brick wall
+
+// House-exterior prefab tiles (verified — red roof + cream wall + blue door).
+// Used by TileMap.placeHouse() to stamp a 3-tall roofed building whose door
+// sits on a map warp. The whole footprint is collidable except the door tile,
+// which is walkable because it coincides with a warp coordinate.
+export const HOUSE_TILES = {
+  ROOF_L: 306, ROOF_M: [307, 308], ROOF_R: 310,
+  EAVE_L: 428, EAVE_M: [429, 431], EAVE_R: 432, // roof eave + windows
+  WALL_L: 492, WALL_M: [493, 492], WALL_R: 493,
+  DOOR: 491
+};

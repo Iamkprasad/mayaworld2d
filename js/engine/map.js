@@ -6,7 +6,7 @@ import {
   TILE_SHEET, TILE_SHEET_AUTUMN, TILE_SHEET_CORRUPTED,
   GRID_COLS, TILE_STRIDE, TILE_SRC,
   BASE_TILES, DECO_TILES, SHRINE_3x3, INTERIOR_FLOOR, INTERIOR_WALL,
-  COLLIDABLE_DECOS
+  COLLIDABLE_DECOS, HOUSE_TILES
 } from '../data/tiles.js';
 
 // Tiles are 1-based indices into backgrounds.png (61-col, 17px-stride grid).
@@ -111,114 +111,64 @@ export class TileMap {
     } 
     
     else if (this.type === 'village') {
+      // Hand-authored Suryanagar: houses sit on the map's warp tiles so the
+      // visible door is exactly where the player transitions. (Map 1 warps:
+      // 12,24 -> Ashram | 34,28 -> Farmhouse | 56,32 -> Hut)
+      const W = this.width;
       this.baseGrid.fill(this.TILES.GRASS);
 
-      // --- River on the left side ---
+      // --- River along the far west (sandy banks added later by shorePass) ---
       for (let y = 0; y < this.height; y++) {
-        const rx = Math.floor(15 + Math.sin(y * 0.12) * 3);
-        for (let x = rx - 3; x <= rx + 3; x++) {
-          if (x >= 0 && x < this.width) {
-            this.baseGrid[y * this.width + x] = this.TILES.WATER;
-          }
-        }
-        if (rx - 4 >= 0) this.baseGrid[y * this.width + (rx - 4)] = this.TILES.SAND;
-        if (rx + 4 < this.width) this.baseGrid[y * this.width + (rx + 4)] = this.TILES.SAND;
-      }
-
-      // --- Bridge crossing the river (y=38..42) ---
-      const bridgeY = 40;
-      const bridgeRx = Math.floor(15 + Math.sin(bridgeY * 0.12) * 3);
-      for (let y = bridgeY - 2; y <= bridgeY + 2; y++) {
-        for (let x = bridgeRx - 3; x <= bridgeRx + 3; x++) {
-          this.baseGrid[y * this.width + x] = this.TILES.GRASS;
-          this.decoGrid[y * this.width + x] = this.DECOS.BRIDGE;
+        const rx = Math.floor(7 + Math.sin(y * 0.12) * 2);
+        for (let x = rx - 2; x <= rx + 2; x++) {
+          if (x >= 0 && x < W) this.baseGrid[y * W + x] = this.TILES.WATER;
         }
       }
 
-      // --- Central village square (stone floor) ---
-      const sqX = 32, sqY = 32, sqW = 10, sqH = 10;
-      for (let y = sqY; y < sqY + sqH; y++) {
-        for (let x = sqX; x < sqX + sqW; x++) {
-          this.baseGrid[y * this.width + x] = this.TILES.STONE;
-        }
+      // --- Central plaza (stone) with a well ---
+      const sqX = 36, sqY = 40, sqW = 9, sqH = 9;
+      for (let y = sqY; y < sqY + sqH; y++)
+        for (let x = sqX; x < sqX + sqW; x++)
+          this.baseGrid[y * W + x] = this.TILES.STONE;
+      this.decoGrid[(sqY + 4) * W + (sqX + 4)] = this.DECOS.RUINED_COL; // well
+
+      // --- Roofed houses whose doors land on the warps ---
+      this.placeHouse(12, 24); // Bhrigu's Ashram
+      this.placeHouse(34, 28); // Reva's Farmhouse
+      this.placeHouse(56, 32); // Village Hut
+
+      // --- Paths: south spawn -> plaza -> north exit (split around plaza) ---
+      this.carvePath(40, 70, 40, sqY + sqH, 2);   // spawn up to plaza south
+      this.carvePath(40, sqY - 1, 40, 1, 2);       // plaza north to grove exit
+      // Branches to each house doormat
+      this.carvePath(12, 25, 12, 44, 2); this.carvePath(12, 44, sqX, 44, 2);
+      this.carvePath(34, 29, 34, sqY, 2);
+      this.carvePath(56, 33, 56, 44, 2); this.carvePath(sqX + sqW - 1, 44, 56, 44, 2);
+      // East trails to the volcano (78,36) and coast (78,25) exits
+      this.carvePath(sqX + sqW, 44, 78, 36, 2);
+      this.carvePath(62, 36, 78, 25, 2);
+
+      // --- Farm crops (northeast) + access path ---
+      for (let y = 8; y <= 15; y++)
+        for (let x = 50; x <= 60; x++)
+          this.decoGrid[y * W + x] = this.DECOS.CROPS;
+      this.carvePath(45, 40, 55, 16, 2);
+
+      // --- Signs & lanterns ---
+      this.decoGrid[(sqY + sqH) * W + sqX] = this.DECOS.SIGNBOARD;
+      this.decoGrid[68 * W + 40] = this.DECOS.SIGNBOARD; // entrance sign
+      for (const ly of [50, 56, 62]) {
+        this.decoGrid[ly * W + 38] = this.DECOS.RUINED_COL;
+        this.decoGrid[ly * W + 42] = this.DECOS.RUINED_COL;
       }
 
-      // Well at square center
-      this.decoGrid[(sqY + 5) * this.width + (sqX + 5)] = this.DECOS.RUINED_COL;
-
-      // --- Buildings around the square ---
-      // Ashram (hermitage) — north of square
-      this.carveAshram(sqX + 1, sqY - 8);
-
-      // Green house — east of square
-      this.carveGreenHouse(sqX + sqW + 3, sqY + 1);
-
-      // Red house (forge) — south-east of square
-      this.carveRedHouse(sqX + sqW + 2, sqY + sqH + 3);
-
-      // --- Paths connecting entrance → square → buildings ---
-      // Main south path: entrance to square
-      this.carvePath(40, 68, 40, sqY + sqH, 2);
-      // Path from square to ashram door
-      this.carvePath(sqX + 4, sqY - 2, sqX + 4, sqY - 2, 2);
-      // Path from square to green house door
-      this.carvePath(sqX + sqW, sqY + 4, sqX + sqW + 3, sqY + 4, 2);
-      // Path from square to red house door
-      this.carvePath(sqX + sqW, sqY + sqH + 2, sqX + sqW + 2, sqY + sqH + 2, 2);
-      // Path from square west to bridge
-      this.carvePath(sqX, bridgeY, bridgeRx + 4, bridgeY, 2);
-
-      // --- Farm area (northeast) ---
-      for (let y = 8; y <= 16; y++) {
-        for (let x = 50; x <= 60; x++) {
-          this.decoGrid[y * this.width + x] = this.DECOS.CROPS;
-        }
-      }
-      // Path to farm
-      this.carvePath(sqX + 5, sqY, sqX + 5, 8, 2);
-
-      // --- Market stalls near square ---
-      this.decoGrid[(sqY - 1) * this.width + sqX] = this.DECOS.CHEST;
-      this.decoGrid[(sqY - 1) * this.width + sqX + sqW - 1] = this.DECOS.CHEST;
-      this.decoGrid[(sqY + sqH) * this.width + sqX] = this.DECOS.SIGNBOARD;
-      this.decoGrid[(sqY + sqH) * this.width + sqX + sqW - 1] = this.DECOS.SIGNBOARD;
-
-      // --- Trees framing the village ---
-      for (let y = 0; y < this.height; y++) {
-        for (let x = 0; x < this.width; x++) {
-          const idx = y * this.width + x;
-          if (this.baseGrid[idx] !== this.TILES.GRASS) continue;
-          if (this.decoGrid[idx] !== this.DECOS.EMPTY) continue;
-          const edgeDist = Math.min(x, this.width - 1 - x, y, this.height - 1 - y);
-          if (edgeDist < 3 && Math.random() < 0.6) {
-            this.decoGrid[idx] = this.DECOS.TREE;
-          } else if (Math.random() < 0.03) {
-            this.decoGrid[idx] = this.DECOS.TREE;
-          }
-        }
-      }
-
-      // --- Village entrance at south ---
-      this.decoGrid[67 * this.width + 39] = this.DECOS.WALL;
-      this.decoGrid[67 * this.width + 41] = this.DECOS.WALL;
-      this.decoGrid[68 * this.width + 38] = this.DECOS.RUINED_COL;
-      this.decoGrid[68 * this.width + 42] = this.DECOS.RUINED_COL;
-      this.decoGrid[67 * this.width + 40] = this.DECOS.SIGNBOARD;
-
-      // Spawn stone pad
-      for (let dy = -1; dy <= 1; dy++) {
+      // --- Spawn stone pad at south entrance ---
+      for (let dy = -1; dy <= 1; dy++)
         for (let dx = -1; dx <= 1; dx++) {
-          this.baseGrid[(69 + dy) * this.width + (40 + dx)] = this.TILES.STONE;
-          this.decoGrid[(69 + dy) * this.width + (40 + dx)] = this.DECOS.EMPTY;
+          this.baseGrid[(70 + dy) * W + (40 + dx)] = this.TILES.STONE;
+          this.decoGrid[(70 + dy) * W + (40 + dx)] = this.DECOS.EMPTY;
         }
-      }
-
-      // Lanterns along main path
-      for (const ly of [50, 55, 60, 65]) {
-        this.decoGrid[ly * this.width + 39] = this.DECOS.RUINED_COL;
-        this.decoGrid[ly * this.width + 41] = this.DECOS.RUINED_COL;
-      }
-    } 
+    }
     
     else if (this.type === 'shrine') {
       this.baseGrid.fill(this.TILES.GRASS);
@@ -239,11 +189,11 @@ export class TileMap {
         }
       }
 
-      // Vashistha Ashram in grove
+      // Vashistha's Hermitage in the grove — door on warp (16,21)
       if (this.type === 'forest') {
-        this.carveAshram(13, 16);
+        this.placeHouse(16, 21);
         // Carve connection path from Hermitage door to the main trail
-        this.carvePath(16, 21, 50, 21, 2);
+        this.carvePath(16, 22, 50, 22, 2);
       }
 
       // Connect warps to main trail on Sacred Grove Entrance (Map 6)
@@ -463,9 +413,9 @@ export class TileMap {
         }
       }
 
-      // Daksha's Forge fortress on ascent path
+      // Daksha's Forge fortress on ascent path — door on warp (60,25)
       if (this.id === 10) {
-        this.carveRedHouse(57, 21);
+        this.placeHouse(60, 25);
 
         // Roads
         this.carvePath(1, 40, 78, 40, 2);
@@ -521,7 +471,7 @@ export class TileMap {
     } 
     
     else if (this.type === 'snow_pass' || this.type === 'summit') {
-      this.baseGrid.fill(this.TILES.SAND); // Sand acts as snow under GBA textures
+      this.baseGrid.fill(this.TILES.SNOW); // white snow ground
       
       // Ice patch sliding sheets
       for (let y = 15; y < 25; y++) {
@@ -532,9 +482,9 @@ export class TileMap {
         }
       }
 
-      // Cabin house on Snowy pass
+      // Cabin house on Snowy pass — door on warp (30,21)
       if (this.id === 18) {
-        this.carveGreenHouse(30, 16);
+        this.placeHouse(30, 21);
 
         // Snowy roads
         this.carvePath(78, 40, 30, 21, 2);
@@ -550,7 +500,7 @@ export class TileMap {
       for (let y = 2; y < this.height - 2; y++) {
         for (let x = 2; x < this.width - 2; x++) {
           const idx = y * this.width + x;
-          if (this.baseGrid[idx] === this.TILES.SAND && this.decoGrid[idx] === this.DECOS.EMPTY) {
+          if (this.baseGrid[idx] === this.TILES.SNOW && this.decoGrid[idx] === this.DECOS.EMPTY) {
             let nearPathOrIce = false;
             for (let dy = -2; dy <= 2; dy++) {
               for (let dx = -2; dx <= 2; dx++) {
@@ -709,8 +659,9 @@ export class TileMap {
         if (clearForObstacle(x, y, 1)) {
           const clump = Math.sin(x * 0.25) * Math.sin(y * 0.25); // smooth clumps
           if (this.type === 'forest' || this.type === 'dense_forest') continue; // forests handle their own trees
-          if (clump > 0.55 && r < 0.18) { this.decoGrid[idx] = this.DECOS.TREE_ALT; continue; }
-          if (r > 0.985) { this.decoGrid[idx] = this.DECOS.ROCK; continue; }
+          if (clump > 0.6 && r < 0.14) { this.decoGrid[idx] = this.DECOS.TREE_ALT; continue; }
+          // sparse rocks, lightly clustered (avoids the "rocks everywhere" noise)
+          if (clump < -0.5 && r > 0.965) { this.decoGrid[idx] = this.DECOS.ROCK; continue; }
         }
 
         // Decorative ground cover (walkable) — denser near the open grass, sparse overall
@@ -720,6 +671,34 @@ export class TileMap {
         else if (r2 < 0.055) this.decoGrid[idx] = this.DECOS.BUSH;
       }
     }
+  }
+
+  // Stamp a 3-tall roofed house exterior whose door sits at (doorX, doorY).
+  // The whole footprint goes into ruinsGrid (collidable); the door tile is
+  // walkable only because (doorX, doorY) is also a warp coordinate.
+  placeHouse(doorX, doorY, w = 4) {
+    const W = this.width, H = this.height, h = 3, doorLocal = 1;
+    const left = doorX - doorLocal;
+    const top = doorY - (h - 1);
+    const HT = HOUSE_TILES;
+    for (let row = 0; row < h; row++) {
+      const y = top + row;
+      if (y < 0 || y >= H) continue;
+      for (let col = 0; col < w; col++) {
+        const x = left + col;
+        if (x < 0 || x >= W) continue;
+        const idx = y * W + x;
+        let tile;
+        if (row === 0) tile = col === 0 ? HT.ROOF_L : col === w - 1 ? HT.ROOF_R : HT.ROOF_M[col % 2];
+        else if (row === 1) tile = col === 0 ? HT.EAVE_L : col === w - 1 ? HT.EAVE_R : HT.EAVE_M[col % 2];
+        else tile = col === 0 ? HT.WALL_L : col === w - 1 ? HT.WALL_R : HT.WALL_M[col % 2];
+        if (row === h - 1 && x === doorX) tile = HT.DOOR;
+        this.ruinsGrid[idx] = tile;
+        this.decoGrid[idx] = this.DECOS.EMPTY; // keep trees/decor off the house
+      }
+    }
+    // Doormat path tile in front of the door
+    if (doorY + 1 < H) this.baseGrid[(doorY + 1) * W + doorX] = this.TILES.DIRT;
   }
 
   carveHouse(sx, sy, w, h) {
@@ -899,6 +878,39 @@ export class TileMap {
           this.drawDeco(ctx, deco, px, py);
         }
       }
+    }
+
+    // Per-region ambient palette — multiply-blend a mood color over the tiles
+    // only (entities are drawn afterwards by the game loop, so they stay clean).
+    const tint = this.getAmbientTint();
+    if (tint) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = tint;
+      ctx.fillRect(0, 0, camera.width, camera.height);
+      ctx.restore();
+    }
+  }
+
+  // Mood color per map type (null = no tint). Multiply blend, so lighter colors
+  // tint subtly and darker colors deepen the scene.
+  getAmbientTint() {
+    switch (this.type) {
+      case 'volcano':
+      case 'volcano_peaks':
+      case 'lava_cave':   return 'rgba(150, 70, 55, 0.85)';   // dark, hot, basalt
+      case 'cave':
+      case 'cave_vault':  return 'rgba(70, 80, 120, 0.7)';    // cool dim cavern
+      case 'snow_pass':
+      case 'summit':      return 'rgba(200, 215, 245, 0.9)';  // cold blue-white
+      case 'void':        return 'rgba(120, 80, 180, 0.7)';   // astral violet
+      case 'forest':
+      case 'dense_forest':return 'rgba(180, 205, 175, 0.92)'; // shaded green
+      case 'coastal':
+      case 'beach':       return 'rgba(255, 240, 205, 0.95)'; // warm coast
+      case 'temple':
+      case 'temple_altar':return 'rgba(245, 235, 215, 0.96)'; // pale alabaster
+      default:            return null;                        // village/interior: untinted
     }
   }
 

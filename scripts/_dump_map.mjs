@@ -16,7 +16,7 @@ const m = new TileMap(mapId, 16);
 const baseIdx = m.baseGrid.map(t => m.getTileIndexForType(t));
 
 const out = {
-  id: m.id, name: m.name, width: m.width, height: m.height,
+  id: m.id, name: m.name, mtype: m.type, width: m.width, height: m.height,
   base: baseIdx,        // sheet indices for ground
   deco: m.decoGrid,     // sheet indices for decorations
   ruins: m.ruinsGrid,   // sheet indices for structures
