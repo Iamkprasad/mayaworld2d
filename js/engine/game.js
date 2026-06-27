@@ -237,10 +237,9 @@ class GameApp {
     // Load local Sages for this map
     this.npcs.push(...createSagesForMap(this.activeMapId));
     
-    // Load local Civilians for this map if epoch > 1
-    if (epochId > 1) {
-      this.npcs.push(...createCiviliansForMap(this.activeMapId));
-    }
+    // Load local Civilians for this map (always — epoch gating removed so
+    // the village feels alive from the very first life)
+    this.npcs.push(...createCiviliansForMap(this.activeMapId));
     
     // Re-add Mayasur if attack is active and this is the active map
     if (this.mayasurAttackActive && this.activeMapId === 1) {
@@ -1245,8 +1244,11 @@ class GameApp {
         npc.update(deltaTime, this.clock, this.mayasurAttackActive, this.journal.data.currentEpoch, this.map);
       });
 
-      // 6. Camera follows player
-      this.camera.follow(this.player.x, this.player.y);
+      // 6. Camera follows player — use interpolated mid-step position for smooth scroll
+      const _interp = this.player.movingProgress;
+      const _camX = this.player.x + (this.player.targetX - this.player.x) * _interp;
+      const _camY = this.player.y + (this.player.targetY - this.player.y) * _interp;
+      this.camera.follow(_camX, _camY);
 
       // 6b. Track region transitions
       this.checkRegionTransition();
