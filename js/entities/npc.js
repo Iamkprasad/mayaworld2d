@@ -81,8 +81,10 @@ export class NPC {
     off.height = h;
     const octx = off.getContext('2d');
     octx.drawImage(this.spriteSheet, 0, 0);
-    octx.globalCompositeOperation = 'source-atop';
-    octx.fillStyle = this.tint;
+    // Multiply blends the tint color with the sprite's grayscale,
+    // preserving internal shading while adding color
+    octx.globalCompositeOperation = 'multiply';
+    octx.fillStyle = this.tint.replace(/[\d.]+\)$/, '1)');
     octx.fillRect(0, 0, w, h);
     octx.globalCompositeOperation = 'source-over';
     _tintCache.set(cacheKey, off);
@@ -260,8 +262,10 @@ export class NPC {
     const srcX = (this.spriteWidth * this.direction) + (this.imagePoss.x * 64);
     const srcY = (this.spriteHeight * this.walkFrame) + (this.imagePoss.y * 84);
     const sheet = this._getTintedSheet() || this.spriteSheet;
+    const sheetW = sheet.naturalWidth || sheet.width || 0;
+    const sheetH = sheet.naturalHeight || sheet.height || 0;
 
-    if (srcX + this.spriteWidth <= sheet.naturalWidth && srcY + this.spriteHeight <= sheet.naturalHeight) {
+    if (srcX + this.spriteWidth <= sheetW && srcY + this.spriteHeight <= sheetH) {
       const drawHeight = Math.floor(ts * (21 / 16));
       const drawYOffset = Math.floor(ts * 0.3);
 
