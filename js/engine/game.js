@@ -14,6 +14,7 @@ import { RitualSystem } from '../systems/ritual.js';
 import { dialogues } from '../data/dialogues.js';
 import { MAPS_CONFIG } from '../data/maps.js';
 import { CinematicIntro } from './cinematic.js';
+import { BuildMode } from './build_mode.js';
 
 const REGIONS = {
   suryanagar: {
@@ -85,7 +86,7 @@ class GameApp {
       (h) => this.onHourChange(h),
       () => this.onDayChange()
     );
-    this.corruption = new CorruptionSystem(80, 80);
+    this.corruption = new CorruptionSystem(40, 40);
     this.samsara = new SamsaraSystem(this.journal, (aff, ep) => this.onRebirth(aff, ep));
 
     // Build map cache lazily — only Map 1 at startup, others on demand
@@ -125,6 +126,9 @@ class GameApp {
     // Speed management
     this.speedMultiplier = 1.0;
 
+    // Build mode (city-builder)
+    this.buildMode = new BuildMode();
+
     // Cinematic intro system
     this.cinematic = new CinematicIntro();
 
@@ -143,7 +147,10 @@ class GameApp {
       // Returning player — show title overlay immediately
       this.state = 'intro';
       const introOverlay = document.getElementById('intro-overlay');
-      if (introOverlay) introOverlay.classList.remove('hidden');
+      if (introOverlay) {
+        introOverlay.classList.remove('hidden');
+        requestAnimationFrame(() => introOverlay.classList.add('visible'));
+      }
     }
 
     // Start loop
@@ -156,7 +163,10 @@ class GameApp {
     document.body.classList.remove('cinematic-active');
     this.state = 'intro';
     const introOverlay = document.getElementById('intro-overlay');
-    if (introOverlay) introOverlay.classList.remove('hidden');
+    if (introOverlay) {
+      introOverlay.classList.remove('hidden');
+      requestAnimationFrame(() => introOverlay.classList.add('visible'));
+    }
   }
 
   _ensureMap(mapId) {
@@ -212,8 +222,8 @@ class GameApp {
     this.corruption.height = this.map.height;
     if (epochId >= 4) {
       // Spawn local corruption on Suryanagar map (Map 1)
-      this.corruption.spawnNode(40, 20); // village square north
-      this.corruption.spawnNode(15, 30); // village square west
+      this.corruption.spawnNode(24, 10); // near the northern farm
+      this.corruption.spawnNode(12, 30); // south-west outskirts
     }
 
     this.mayasurAttackActive = false;
@@ -243,7 +253,7 @@ class GameApp {
     
     // Re-add Mayasur if attack is active and this is the active map
     if (this.mayasurAttackActive && this.activeMapId === 1) {
-      this.mayasurEntity = new NPC(999, 'mayasur', 'Mayasur', 40, 68);
+      this.mayasurEntity = new NPC(999, 'mayasur', 'Mayasur', 19, 33);
       this.npcs.push(this.mayasurEntity);
     }
   }
@@ -268,7 +278,10 @@ class GameApp {
     this.tutorialStep = 0;
     const introOverlay = document.getElementById('intro-overlay');
     if (introOverlay) {
-      introOverlay.classList.add('hidden');
+      introOverlay.classList.remove('visible');
+      introOverlay.addEventListener('transitionend', () => {
+        introOverlay.classList.add('hidden');
+      }, { once: true });
     }
     // Show system action bar now that game has started
     const sysBar = document.querySelector('.system-action-bar');
@@ -546,6 +559,33 @@ class GameApp {
         this.renderJournalTab(targetId);
       });
     });
+
+    // Build mode canvas mouse interactions
+    this.canvas.addEventListener('mousemove', (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const scaleX = this.canvas.width / rect.width;
+      const scaleY = this.canvas.height / rect.height;
+      const cx = (e.clientX - rect.left) * scaleX;
+      const cy = (e.clientY - rect.top) * scaleY;
+      this.buildMode.handleMouseMove(cx, cy, this.camera);
+    });
+    this.canvas.addEventListener('mouseleave', () => {
+      this.buildMode.handleMouseLeave();
+    });
+    this.canvas.addEventListener('click', (e) => {
+      if (this.buildMode.active && this.state === 'playing') {
+        e.preventDefault();
+        this.buildMode.place(this.map, this.player);
+      }
+    });
+    this.canvas.addEventListener('contextmenu', (e) => {
+      if (this.buildMode.active) {
+        e.preventDefault();
+        // Right-click selects Remove tool
+        this.buildMode.select(6);
+        this.buildMode.place(this.map, this.player);
+      }
+    });
   }
 
   handleKeyDown(code) {
@@ -574,11 +614,20 @@ class GameApp {
         this.toggleMeditation();
       }
       else if (code === 'KeyZ') {
-        this.interact();
+        if (!this.buildMode.active) this.interact();
       }
       else if (code === 'KeyX' && this.player.vidyas.agni >= 2) {
-        // Agni Seal L2 purification spell
         this.triggerAgniSeal();
+      }
+      else if (code === 'KeyB') {
+        this.buildMode.toggle();
+      }
+      else if (this.buildMode.active && code.startsWith('Digit')) {
+        const num = parseInt(code.replace('Digit', ''), 10);
+        if (num >= 1 && num <= 7) this.buildMode.select(num - 1);
+      }
+      else if (this.buildMode.active && code === 'Escape') {
+        this.buildMode.toggle();
       }
     }
     
@@ -821,7 +870,8 @@ class GameApp {
     const speakerEl = document.getElementById('dialogue-speaker');
     
     speakerEl.innerText = speaker;
-    box.classList.remove('hidden');
+    box.classList.remove('hidden', 'fade-out');
+    box.classList.add('fade-in');
 
     this.dialogueQueue.push(...lines);
     this.nextDialogue();
@@ -845,8 +895,14 @@ class GameApp {
   }
 
   closeDialogue() {
+    const box = document.getElementById('dialogue-box');
+    box.classList.remove('fade-in');
+    box.classList.add('fade-out');
+    box.addEventListener('animationend', () => {
+      box.classList.add('hidden');
+      box.classList.remove('fade-out');
+    }, { once: true });
     this.state = 'playing';
-    document.getElementById('dialogue-box').classList.add('hidden');
     this.activeNPC = null;
   }
 
@@ -854,11 +910,17 @@ class GameApp {
     const journal = document.getElementById('journal-overlay');
     if (this.state === 'playing') {
       this.state = 'menu';
-      journal.classList.remove('hidden');
+      journal.classList.remove('hidden', 'fade-out');
+      journal.classList.add('fade-in');
       this.renderJournalTab('status-tab');
     } else if (this.state === 'menu') {
+      journal.classList.remove('fade-in');
+      journal.classList.add('fade-out');
+      journal.addEventListener('animationend', () => {
+        journal.classList.add('hidden');
+        journal.classList.remove('fade-out');
+      }, { once: true });
       this.state = 'playing';
-      journal.classList.add('hidden');
     }
   }
 
@@ -984,6 +1046,37 @@ class GameApp {
     });
   }
 
+  // Single, always-visible goal that reflects the current act and where to head
+  // on the map — keeps the branching story readable without a quest log.
+  getCurrentObjective() {
+    const d = this.journal.data;
+    switch (this.gameAct) {
+      case 1:
+        return this.player && this.player.vidyas.agni < 1
+          ? 'Speak with Sage Bhrigu on the village path (press Z).'
+          : 'Leave Suryanagar — head north to the Sacred Grove.';
+      case 2:
+        return 'Go north to the Sacred Grove and meet the Sages.';
+      case 3:
+        return 'Learn the Disciplines — seek the Sages across the island.';
+      case 4: {
+        const need = [];
+        if (!d.relicRage) need.push('Rage (Volcano)');
+        if (!d.relicPride) need.push('Pride (Tidal Ruins)');
+        if (!d.relicDesire) need.push('Desire (Summit)');
+        return need.length
+          ? 'Find the Relics of Tamas: ' + need.join(', ') + '.'
+          : 'Bring the three Relics back to Daksha at the Forge.';
+      }
+      case 5:
+        return 'Return to Vashistha in the Sacred Grove for the True Name.';
+      case 6:
+        return 'Reach the Altar of Vows at the centre during the Eclipse.';
+      default:
+        return 'Explore Suryanagar.';
+    }
+  }
+
   getEpochName(id) {
     const names = [
       "", "Age of First Fire", "Age of Roots", "Age of Rivers", 
@@ -1047,15 +1140,15 @@ class GameApp {
   triggerMayasurAttack() {
     this.mayasurAttackActive = true;
     this.mayasurAttackTimer = 0;
-    this.mayasurEntity = new NPC(999, 'mayasur', 'Mayasur', 40, 68);
+    this.mayasurEntity = new NPC(999, 'mayasur', 'Mayasur', 19, 33);
     this.npcs.push(this.mayasurEntity);
 
     console.log("Mayasur is attacking the village!");
     this.clock.eclipseActive = true; // Temporary eclipse tint during battle
-    
+
     // Spawn corruption nodes
-    this.corruption.spawnNode(38, 68);
-    this.corruption.spawnNode(42, 68);
+    this.corruption.spawnNode(17, 33);
+    this.corruption.spawnNode(21, 33);
 
     // Shake console screen (lightweight class toggle instead of CSS animation)
     const frame = document.getElementById('emu-screen-container') || document.getElementById('screen-frame');
@@ -1071,12 +1164,12 @@ class GameApp {
     this.mayasurEntity = null;
     this.clock.eclipseActive = false;
     
-    // Collapse structures into ruins (destroy huts)
     for (let i = 0; i < this.map.ruinsGrid.length; i++) {
-      if (this.map.ruinsGrid[i] === 1 && Math.random() < 0.5) {
-        this.map.ruinsGrid[i] = 2; // collapsed to rubble
+      if (this.map.ruinsGrid[i] > 0 && Math.random() < 0.5) {
+        this.map.ruinsGrid[i] = 0;
       }
     }
+    this.map.invalidateCache(); // ruins changed → refresh the tile cache
     console.log("Mayasur has retreated.");
   }
 
@@ -1101,7 +1194,7 @@ class GameApp {
     if (this.player) {
       const hud = document.getElementById('game-hud');
       if (hud) {
-        hud.classList.toggle('hidden', this.state !== 'playing' && this.state !== 'transition');
+        hud.classList.toggle('hidden', this.state !== 'playing' && this.state !== 'transition' && this.state !== 'dialogue');
         document.getElementById('hud-age-value').innerText = this.player.age;
         const breathPct = Math.max(0, Math.min(100, (this.player.breath / this.player.breathMax) * 100));
         document.getElementById('hud-breath-fill').style.width = breathPct + '%';
@@ -1112,6 +1205,16 @@ class GameApp {
         document.getElementById('hud-karma-shadow-val').innerText = totalShadow;
         const actNames = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
         document.getElementById('hud-act-value').innerText = actNames[this.gameAct] || 'I';
+
+        const objEl = document.getElementById('hud-objective-text');
+        if (objEl) {
+          if (this.buildMode.active) {
+            const sel = this.buildMode.selected;
+            objEl.innerText = `[BUILD] ${sel.name} (♰${sel.cost}) — ${sel.desc} | 1-7: select, Click: place, RClick: remove, Esc: exit`;
+          } else {
+            objEl.innerText = this.getCurrentObjective();
+          }
+        }
       }
     }
 
@@ -1211,13 +1314,15 @@ class GameApp {
       // 1b. Vritti thought timer
       this.vritti.update(deltaTime);
 
-      // 2. Input handling (WASD / Arrows)
+      // 2. Input handling (WASD / Arrows) — disabled in build mode
       let dx = 0;
       let dy = 0;
-      if (this.keys['ArrowUp'] || this.keys['KeyW']) dy = -1;
-      else if (this.keys['ArrowDown'] || this.keys['KeyS']) dy = 1;
-      else if (this.keys['ArrowLeft'] || this.keys['KeyA']) dx = -1;
-      else if (this.keys['ArrowRight'] || this.keys['KeyD']) dx = 1;
+      if (!this.buildMode.active) {
+        if (this.keys['ArrowUp'] || this.keys['KeyW']) dy = -1;
+        else if (this.keys['ArrowDown'] || this.keys['KeyS']) dy = 1;
+        else if (this.keys['ArrowLeft'] || this.keys['KeyA']) dx = -1;
+        else if (this.keys['ArrowRight'] || this.keys['KeyD']) dx = 1;
+      }
 
       if (dx !== 0 || dy !== 0) {
         this.player.requestMove(dx, dy, this.map);
@@ -1367,9 +1472,13 @@ class GameApp {
     if (s.phase === 'menu') {
       if (s.subMenu === null) {
         if (code === 'ArrowDown' || code === 'KeyS') {
-          s.menuIndex = (s.menuIndex + 1) % 4;
+          s.menuIndex = (s.menuIndex + 2) % 4;
         } else if (code === 'ArrowUp' || code === 'KeyW') {
-          s.menuIndex = (s.menuIndex - 1 + 4) % 4;
+          s.menuIndex = (s.menuIndex - 2 + 4) % 4;
+        } else if (code === 'ArrowRight' || code === 'KeyD') {
+          s.menuIndex = s.menuIndex % 2 === 0 ? s.menuIndex + 1 : s.menuIndex - 1;
+        } else if (code === 'ArrowLeft' || code === 'KeyA') {
+          s.menuIndex = s.menuIndex % 2 === 1 ? s.menuIndex - 1 : s.menuIndex + 1;
         } else if (code === 'KeyZ') {
           this.confirmBattleMenuOption();
         }
@@ -1380,9 +1489,13 @@ class GameApp {
           return;
         }
         if (code === 'ArrowDown' || code === 'KeyS') {
-          s.subIndex = (s.subIndex + 1) % vidyas.length;
+          s.subIndex = Math.min(vidyas.length - 1, s.subIndex + 2);
         } else if (code === 'ArrowUp' || code === 'KeyW') {
-          s.subIndex = (s.subIndex - 1 + vidyas.length) % vidyas.length;
+          s.subIndex = Math.max(0, s.subIndex - 2);
+        } else if (code === 'ArrowRight' || code === 'KeyD') {
+          s.subIndex = Math.min(vidyas.length - 1, s.subIndex + 1);
+        } else if (code === 'ArrowLeft' || code === 'KeyA') {
+          s.subIndex = Math.max(0, s.subIndex - 1);
         } else if (code === 'KeyX') {
           s.subMenu = null;
         } else if (code === 'KeyZ') {
@@ -1654,7 +1767,16 @@ class GameApp {
     // 4. Render Active Overworld VFX (Meditation/purifications)
     this.renderVFX(null);
 
-    // 5. Draw Transition Mask
+    // 5. Build mode overlays (grid, cursor preview, palette)
+    if (this.state !== 'transition' && this.buildMode.active) {
+      this.buildMode._mapRef = this.map;
+      this.buildMode._playerRef = this.player;
+      this.buildMode.drawGrid(this.ctx, this.camera);
+      this.buildMode.drawCursorPreview(this.ctx, this.camera);
+      this.buildMode.drawPalette(this.ctx, this.canvas);
+    }
+
+    // 6. Draw Transition Mask
     if (this.state === 'transition' && this.transitionState) {
       const ts = this.transitionState;
       let opacity = 0;
@@ -1735,16 +1857,15 @@ class GameApp {
       this.ctx.strokeRect(100, 330, 200, 16);
     }
 
-    // Draw Player sprite scaled up
     const pX = 180;
     const pY = 360;
     this.ctx.imageSmoothingEnabled = false;
     this.ctx.drawImage(
       this.player.spriteSheet, 
-      this.player.spriteWidth * 3, // face right/direction 3
-      0, 
+      this.player.spriteWidth * this.player.direction,
+      this.player.spriteHeight * this.player.walkFrame,
       this.player.spriteWidth, this.player.spriteHeight, 
-      pX, pY, 80, 120
+      pX, pY, 64, 64
     );
 
     // 5. Draw Mayasur on top-right

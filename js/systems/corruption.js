@@ -49,12 +49,11 @@ export class CorruptionSystem {
 
     if (tx >= 0 && tx < this.width && ty >= 0 && ty < this.height) {
       const idx = ty * this.width + tx;
-      // Do not corrupt water or existing decorations that collide
       if (map.baseGrid[idx] !== map.TILES.WATER && map.baseGrid[idx] !== map.TILES.CORRUPTED) {
         map.baseGrid[idx] = map.TILES.CORRUPTED;
-        if (map.invalidateCache) map.invalidateCache();
       }
     }
+    if (map.invalidateCache) map.invalidateCache();
   }
 
   _distSq(x1, y1, x2, y2) {
@@ -79,14 +78,14 @@ export class CorruptionSystem {
           const idx = ty * this.width + tx;
           if (map.baseGrid[idx] === map.TILES.CORRUPTED) {
             map.baseGrid[idx] = map.TILES.GRASS;
-            if (map.invalidateCache) map.invalidateCache();
             tilesCleaned += 1;
           }
         }
       }
     }
 
-    // Remove any corruption nodes inside this purified area
+    if (tilesCleaned > 0 && map.invalidateCache) map.invalidateCache();
+
     this.nodes = this.nodes.filter(n => this._distSq(n.x, n.y, cx, cy) > rSq);
 
     return tilesCleaned;

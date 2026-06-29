@@ -279,14 +279,12 @@ export class BattleSystem {
     const pX = 180;
     const pY = 360;
     this.ctx.imageSmoothingEnabled = false;
-    this.ctx.msImageSmoothingEnabled = false;
-    this.ctx.mozImageSmoothingEnabled = false;
     this.ctx.drawImage(
       this.player.spriteSheet,
-      this.player.spriteWidth * 3,
-      0,
+      this.player.spriteWidth * this.player.direction,
+      this.player.spriteHeight * this.player.walkFrame,
       this.player.spriteWidth, this.player.spriteHeight,
-      pX, pY, 80, 120
+      pX, pY, 64, 64
     );
 
     this.ctx.fillStyle = '#d23d3d';

@@ -5,20 +5,20 @@ export const MAPS_CONFIG = {
   1: {
     id: 1,
     name: "Suryanagar Village Square",
-    width: 80,
-    height: 80,
+    width: 40,
+    height: 40,
     theme: "vibrant",
     type: "village",
-    defaultSpawn: { x: 40, y: 70 },
+    defaultSpawn: { x: 19, y: 36 },
     color: "#27633d",
     warps: [
-      { x: 12, y: 24, targetMapId: 2, targetX: 10, targetY: 18, type: "door" },
-      { x: 34, y: 28, targetMapId: 3, targetX: 8, targetY: 14, type: "door" },
-      { x: 56, y: 32, targetMapId: 4, targetX: 8, targetY: 14, type: "door" },
-      { x: 40, y: 59, targetMapId: 5, targetX: 20, targetY: 2, type: "pass" },
-      { x: 40, y: 1, targetMapId: 6, targetX: 40, targetY: 78, type: "pass" },
-      { x: 78, y: 36, targetMapId: 10, targetX: 2, targetY: 40, type: "pass" },
-      { x: 78, y: 25, targetMapId: 14, targetX: 2, targetY: 40, type: "river" }
+      { x: 8, y: 12, targetMapId: 2, targetX: 10, targetY: 18, type: "door" },   // Bhrigu's Ashram
+      { x: 30, y: 12, targetMapId: 3, targetX: 8, targetY: 14, type: "door" },   // Reva's Farmhouse
+      { x: 8, y: 28, targetMapId: 4, targetX: 8, targetY: 14, type: "door" },    // Village Hut
+      { x: 19, y: 38, targetMapId: 5, targetX: 20, targetY: 2, type: "pass" },   // South shrine
+      { x: 19, y: 1, targetMapId: 6, targetX: 20, targetY: 37, type: "pass" },   // North grove
+      { x: 38, y: 18, targetMapId: 10, targetX: 2, targetY: 20, type: "pass" },  // East volcano
+      { x: 38, y: 30, targetMapId: 14, targetX: 2, targetY: 20, type: "river" }  // East coast
     ]
   },
   2: {
@@ -29,10 +29,10 @@ export const MAPS_CONFIG = {
     theme: "vibrant",
     type: "interior",
     defaultSpawn: { x: 10, y: 18 },
-    floorTile: 132, // wood floor
-    wallTile: 74, // brick wall
+    floorTile: 109, // cobblestone floor (kenney_terrain)
+    wallTile: 89, // stone wall (kenney_terrain)
     warps: [
-      { x: 10, y: 19, targetMapId: 1, targetX: 12, targetY: 25, type: "door" }
+      { x: 10, y: 19, targetMapId: 1, targetX: 8, targetY: 13, type: "door" }
     ]
   },
   3: {
@@ -43,10 +43,10 @@ export const MAPS_CONFIG = {
     theme: "vibrant",
     type: "interior",
     defaultSpawn: { x: 8, y: 14 },
-    floorTile: 132,
-    wallTile: 74,
+    floorTile: 109,
+    wallTile: 89,
     warps: [
-      { x: 8, y: 15, targetMapId: 1, targetX: 34, targetY: 29, type: "door" }
+      { x: 8, y: 15, targetMapId: 1, targetX: 30, targetY: 13, type: "door" }
     ]
   },
   4: {
@@ -57,10 +57,10 @@ export const MAPS_CONFIG = {
     theme: "vibrant",
     type: "interior",
     defaultSpawn: { x: 8, y: 14 },
-    floorTile: 132,
-    wallTile: 74,
+    floorTile: 109,
+    wallTile: 89,
     warps: [
-      { x: 8, y: 15, targetMapId: 1, targetX: 56, targetY: 33, type: "door" }
+      { x: 8, y: 15, targetMapId: 1, targetX: 8, targetY: 29, type: "door" }
     ]
   },
   5: {
@@ -72,23 +72,23 @@ export const MAPS_CONFIG = {
     type: "shrine",
     defaultSpawn: { x: 20, y: 2 },
     warps: [
-      { x: 20, y: 1, targetMapId: 1, targetX: 40, targetY: 58, type: "pass" },
-      { x: 20, y: 21, targetMapId: 21, targetX: 40, targetY: 78, type: "pass" }
+      { x: 20, y: 1, targetMapId: 1, targetX: 19, targetY: 37, type: "pass" },
+      { x: 20, y: 21, targetMapId: 21, targetX: 20, targetY: 37, type: "pass" }
     ]
   },
   6: {
     id: 6,
     name: "Sacred Grove Entrance",
-    width: 80,
-    height: 80,
+    width: 40,
+    height: 40,
     theme: "vibrant",
     type: "forest",
-    defaultSpawn: { x: 40, y: 78 },
+    defaultSpawn: { x: 20, y: 36 },
     warps: [
-      { x: 40, y: 79, targetMapId: 1, targetX: 40, targetY: 2, type: "pass" },
-      { x: 16, y: 21, targetMapId: 7, targetX: 10, targetY: 18, type: "door" },
-      { x: 1, y: 40, targetMapId: 18, targetX: 78, targetY: 40, type: "pass" },
-      { x: 40, y: 1, targetMapId: 8, targetX: 40, targetY: 78, type: "pass" }
+      { x: 20, y: 38, targetMapId: 1, targetX: 19, targetY: 2, type: "pass" },   // south to village
+      { x: 12, y: 28, targetMapId: 7, targetX: 10, targetY: 18, type: "door" },  // Vashistha's Hermitage
+      { x: 1, y: 20, targetMapId: 18, targetX: 37, targetY: 20, type: "pass" },  // west to snowy pass
+      { x: 20, y: 1, targetMapId: 8, targetX: 20, targetY: 37, type: "pass" }    // north to canopy
     ]
   },
   7: {
@@ -99,23 +99,23 @@ export const MAPS_CONFIG = {
     theme: "vibrant",
     type: "interior",
     defaultSpawn: { x: 10, y: 18 },
-    floorTile: 132,
-    wallTile: 74,
+    floorTile: 109,
+    wallTile: 89,
     warps: [
-      { x: 10, y: 19, targetMapId: 6, targetX: 16, targetY: 22, type: "door" }
+      { x: 10, y: 19, targetMapId: 6, targetX: 12, targetY: 29, type: "door" }
     ]
   },
   8: {
     id: 8,
     name: "Canopy of Roots",
-    width: 80,
-    height: 80,
+    width: 40,
+    height: 40,
     theme: "vibrant",
     type: "dense_forest",
-    defaultSpawn: { x: 40, y: 78 },
+    defaultSpawn: { x: 20, y: 36 },
     warps: [
-      { x: 40, y: 79, targetMapId: 6, targetX: 40, targetY: 2, type: "pass" },
-      { x: 70, y: 13, targetMapId: 9, targetX: 20, targetY: 38, type: "cave" }
+      { x: 20, y: 38, targetMapId: 6, targetX: 20, targetY: 2, type: "pass" },   // south to grove
+      { x: 20, y: 1, targetMapId: 9, targetX: 20, targetY: 38, type: "cave" }    // north to whispering caves
     ]
   },
   9: {
@@ -127,22 +127,22 @@ export const MAPS_CONFIG = {
     type: "cave",
     defaultSpawn: { x: 20, y: 38 },
     warps: [
-      { x: 20, y: 39, targetMapId: 8, targetX: 70, targetY: 14, type: "cave" }
+      { x: 20, y: 39, targetMapId: 8, targetX: 20, targetY: 3, type: "cave" }
     ]
   },
   10: {
     id: 10,
     name: "Volcanic Ascent Path",
-    width: 80,
-    height: 80,
+    width: 40,
+    height: 40,
     theme: "autumn",
     type: "volcano",
-    defaultSpawn: { x: 2, y: 40 },
+    defaultSpawn: { x: 3, y: 20 },
     warps: [
-      { x: 1, y: 40, targetMapId: 1, targetX: 77, targetY: 36, type: "pass" },
-      { x: 60, y: 25, targetMapId: 11, targetX: 12, targetY: 22, type: "door" },
-      { x: 40, y: 9, targetMapId: 12, targetX: 20, targetY: 38, type: "cave" },
-      { x: 78, y: 40, targetMapId: 13, targetX: 2, targetY: 20, type: "pass" }
+      { x: 1, y: 20, targetMapId: 1, targetX: 37, targetY: 18, type: "pass" },   // west to village
+      { x: 28, y: 18, targetMapId: 11, targetX: 12, targetY: 22, type: "door" }, // Daksha's Forge
+      { x: 20, y: 1, targetMapId: 12, targetX: 20, targetY: 38, type: "cave" },  // north to lava caves
+      { x: 38, y: 30, targetMapId: 13, targetX: 2, targetY: 20, type: "pass" }   // east to crag heights
     ]
   },
   11: {
@@ -153,10 +153,10 @@ export const MAPS_CONFIG = {
     theme: "autumn",
     type: "interior",
     defaultSpawn: { x: 12, y: 22 },
-    floorTile: 33, // stone/basalt
-    wallTile: 74,
+    floorTile: 109,
+    wallTile: 89,
     warps: [
-      { x: 12, y: 23, targetMapId: 10, targetX: 60, targetY: 26, type: "door" }
+      { x: 12, y: 23, targetMapId: 10, targetX: 28, targetY: 19, type: "door" }
     ]
   },
   12: {
@@ -168,7 +168,7 @@ export const MAPS_CONFIG = {
     type: "lava_cave",
     defaultSpawn: { x: 20, y: 38 },
     warps: [
-      { x: 20, y: 39, targetMapId: 10, targetX: 40, targetY: 10, type: "cave" }
+      { x: 20, y: 39, targetMapId: 10, targetX: 20, targetY: 2, type: "cave" }
     ]
   },
   13: {
@@ -180,21 +180,21 @@ export const MAPS_CONFIG = {
     type: "volcano_peaks",
     defaultSpawn: { x: 2, y: 20 },
     warps: [
-      { x: 1, y: 20, targetMapId: 10, targetX: 77, targetY: 40, type: "pass" }
+      { x: 1, y: 20, targetMapId: 10, targetX: 37, targetY: 30, type: "pass" }
     ]
   },
   14: {
     id: 14,
     name: "Submerged Column Hall",
-    width: 80,
-    height: 80,
+    width: 40,
+    height: 40,
     theme: "vibrant",
     type: "coastal",
-    defaultSpawn: { x: 2, y: 40 },
+    defaultSpawn: { x: 3, y: 20 },
     warps: [
-      { x: 1, y: 40, targetMapId: 1, targetX: 77, targetY: 25, type: "river" },
-      { x: 40, y: 17, targetMapId: 15, targetX: 16, targetY: 30, type: "door" },
-      { x: 78, y: 40, targetMapId: 16, targetX: 2, targetY: 40, type: "pass" }
+      { x: 1, y: 20, targetMapId: 1, targetX: 37, targetY: 30, type: "river" },  // west to village
+      { x: 20, y: 6, targetMapId: 15, targetX: 16, targetY: 30, type: "door" },  // Sanctuary of Time
+      { x: 38, y: 20, targetMapId: 16, targetX: 2, targetY: 20, type: "pass" }   // east to coral shore
     ]
   },
   15: {
@@ -206,20 +206,20 @@ export const MAPS_CONFIG = {
     type: "temple",
     defaultSpawn: { x: 16, y: 30 },
     warps: [
-      { x: 16, y: 31, targetMapId: 14, targetX: 40, targetY: 18, type: "door" }
+      { x: 16, y: 31, targetMapId: 14, targetX: 20, targetY: 7, type: "door" }
     ]
   },
   16: {
     id: 16,
     name: "Coral Reef Shore",
-    width: 80,
-    height: 80,
+    width: 40,
+    height: 40,
     theme: "vibrant",
     type: "beach",
-    defaultSpawn: { x: 2, y: 40 },
+    defaultSpawn: { x: 3, y: 20 },
     warps: [
-      { x: 1, y: 40, targetMapId: 14, targetX: 77, targetY: 40, type: "pass" },
-      { x: 40, y: 41, targetMapId: 17, targetX: 12, targetY: 22, type: "cave" }
+      { x: 1, y: 20, targetMapId: 14, targetX: 37, targetY: 20, type: "pass" },  // west to column hall
+      { x: 14, y: 38, targetMapId: 17, targetX: 12, targetY: 22, type: "cave" }  // tidal ruins vault
     ]
   },
   17: {
@@ -231,21 +231,21 @@ export const MAPS_CONFIG = {
     type: "cave_vault",
     defaultSpawn: { x: 12, y: 22 },
     warps: [
-      { x: 12, y: 23, targetMapId: 16, targetX: 40, targetY: 42, type: "cave" }
+      { x: 12, y: 23, targetMapId: 16, targetX: 14, targetY: 37, type: "cave" }
     ]
   },
   18: {
     id: 18,
     name: "Snowy Mountain Pass",
-    width: 80,
-    height: 80,
+    width: 40,
+    height: 40,
     theme: "autumn", // using autumn tileset modified to snow colors in draw loops
     type: "snow_pass",
-    defaultSpawn: { x: 78, y: 40 },
+    defaultSpawn: { x: 37, y: 20 },
     warps: [
-      { x: 79, y: 40, targetMapId: 6, targetX: 2, targetY: 40, type: "pass" },
-      { x: 30, y: 21, targetMapId: 19, targetX: 8, targetY: 14, type: "door" },
-      { x: 20, y: 1, targetMapId: 20, targetX: 20, targetY: 38, type: "pass" }
+      { x: 38, y: 20, targetMapId: 6, targetX: 2, targetY: 20, type: "pass" },   // east to grove
+      { x: 20, y: 28, targetMapId: 19, targetX: 8, targetY: 14, type: "door" },  // Mahameru Hermitage
+      { x: 20, y: 1, targetMapId: 20, targetX: 20, targetY: 38, type: "pass" }   // north to summit
     ]
   },
   19: {
@@ -256,10 +256,10 @@ export const MAPS_CONFIG = {
     theme: "vibrant",
     type: "interior",
     defaultSpawn: { x: 8, y: 14 },
-    floorTile: 132,
-    wallTile: 74,
+    floorTile: 109,
+    wallTile: 89,
     warps: [
-      { x: 8, y: 15, targetMapId: 18, targetX: 30, targetY: 22, type: "door" }
+      { x: 8, y: 15, targetMapId: 18, targetX: 20, targetY: 29, type: "door" }
     ]
   },
   20: {
@@ -277,26 +277,26 @@ export const MAPS_CONFIG = {
   21: {
     id: 21,
     name: "Temple of Vows Altar",
-    width: 80,
-    height: 80,
+    width: 40,
+    height: 40,
     theme: "vibrant",
     type: "temple_altar",
-    defaultSpawn: { x: 40, y: 78 },
+    defaultSpawn: { x: 20, y: 36 },
     warps: [
-      { x: 40, y: 79, targetMapId: 5, targetX: 20, targetY: 20, type: "pass" },
-      { x: 40, y: 41, targetMapId: 22, targetX: 40, targetY: 78, type: "portal" }
+      { x: 20, y: 38, targetMapId: 5, targetX: 20, targetY: 18, type: "pass" },     // south to shrine
+      { x: 20, y: 8, targetMapId: 22, targetX: 20, targetY: 36, type: "portal" }    // portal to the void
     ]
   },
   22: {
     id: 22,
     name: "Cosmic Center Void",
-    width: 80,
-    height: 80,
+    width: 40,
+    height: 40,
     theme: "corrupted",
     type: "void",
-    defaultSpawn: { x: 40, y: 78 },
+    defaultSpawn: { x: 20, y: 36 },
     warps: [
-      { x: 40, y: 79, targetMapId: 21, targetX: 40, targetY: 42, type: "portal" }
+      { x: 20, y: 38, targetMapId: 21, targetX: 20, targetY: 21, type: "portal" }
     ]
   }
 };

@@ -1,64 +1,63 @@
 // Canonical tile mapping for MayaWorld.
 //
-// Tile sheet: assets/images/backgrounds.png  (1036x4000)
-// Grid: 61 columns x 235 rows, 16px tiles on a 17px stride (1px gap).
-// Indices are 1-based: index = row*61 + col + 1.
+// Tile sheet: assets/images/kenney_terrain.png  (192x176)
+// Grid: 12 columns x 11 rows, 16px tiles packed with no gap.
+// Indices are 1-based: index = row*12 + col + 1.
 //
-// These indices were VERIFIED by sampling the actual pixels of backgrounds.png
-// (see scripts/ + scratch/_final_picks.png). Every entry points at a distinct,
-// visually-correct tile — no two concepts share an index (the old map.js
-// collapsed ~14 concepts onto 4 magic indices, which is why the map looked
-// like one repeated brown tile).
+// All tiles drawn from the Kenney Tiny-Town pack (tilemap_packed.png)
+// to eliminate the previous Pokémon GBA aesthetic.
 
-export const TILE_SHEET = 'assets/images/backgrounds.png';
-export const TILE_SHEET_AUTUMN = 'assets/images/backgrounds_autumn.png';
-export const TILE_SHEET_CORRUPTED = 'assets/images/backgrounds_corrupted.png';
-export const GRID_COLS = 61;
-export const TILE_STRIDE = 17; // 16px tile + 1px gap
+export const TILE_SHEET = 'assets/images/kenney_terrain.png';
+export const TILE_SHEET_AUTUMN = 'assets/images/kenney_terrain.png';
+export const TILE_SHEET_CORRUPTED = 'assets/images/kenney_terrain.png';
+export const GRID_COLS = 12;
+export const TILE_STRIDE = 16; // no gap in packed sheet
 export const TILE_SRC = 16;
 
-// Ground / base terrain (verified)
+// Ground / base terrain (Kenney tiny-town 1-based indices)
 export const BASE_TILES = {
-  WATER: 54,      // blue water w/ shore
-  GRASS: 1,       // green grass
-  SAND: 29,       // tan sand
-  DIRT: 132,      // brown dirt path
-  STONE: 33,      // light cobble / stone floor
-  LAVA: 367,      // red lava
-  CORRUPTED: 245, // dark/red corrupted ground (stand-in, refine later)
-  SNOW: 38,       // near-white snow
-  ICE: 201,       // pale blue ice/water
-  VOID: 62        // black cosmic void
+  WATER: 49,      // tile 48 — blue water
+  GRASS: 1,       // tile 0  — solid green
+  SAND: 77,       // tile 76 — shore / beach transition
+  DIRT: 97,       // tile 96 — gray packed-earth path
+  STONE: 109,     // tile 108 — cobblestone
+  LAVA: 25,       // tile 24 — red roof tile (lava stand-in)
+  CORRUPTED: 1,   // same as grass (corrupted sheet TBD)
+  SNOW: 110,      // tile 109 — light gray
+  ICE: 98,        // tile 97 — gray path
+  VOID: 0         // transparent / empty
 };
 
-// Decoration / object tiles (verified, all distinct)
+// Decoration / object tiles (Kenney tiny-town 1-based indices)
 export const DECO_TILES = {
   EMPTY: 0,
-  TREE: 103,       // leafy green canopy
-  WALL: 74,        // grey stone wall / rock face
-  TEMPLE_WALL: 342,// grey temple stone
-  BRIDGE: 76,      // wooden plank bridge deck (walkable)
-  ALTAR: 319,      // stone altar / temple step
-  SHRINE: 624,     // shrine stand-in (single tile)
-  RUINED_COL: 69,  // grey boulder / ruined column
-  PORTAL: 1254,    // portal swirl
-  CROPS: 64,       // green crop bush
-  FORGE: 368,      // red brick forge
-  BOOKSHELF: 14,   // furniture / shelf
-  SIGNBOARD: 25,   // wooden signpost
-  CHEST: 6,        // small wooden chest/crate
-  // --- nature-pass decor (verified) ---
-  FLOWER: 17,      // red flowers (decorative, walkable)
-  BUSH: 1257,      // leafy fern/bush (decorative, walkable)
-  TUFT: 1372,      // grass tuft (decorative, walkable)
-  TREE_ALT: 225,   // alternate darker tree canopy (collidable)
-  ROCK: 69         // grey boulder (collidable) — alias of RUINED_COL
+  TREE: 17,        // tile 16 — bush on grass
+  WALL: 89,        // tile 88 — building wall with windows
+  TEMPLE_WALL: 109,// tile 108 — cobblestone (temple stand-in)
+  BRIDGE: 50,      // tile 49 — shore tile (bridge stand-in)
+  ALTAR: 4,        // tile 3  — red heart/crystal
+  SHRINE: 4,       // tile 3  — red heart/crystal
+  RUINED_COL: 79,  // tile 78 — gray decorative pillar
+  PORTAL: 4,       // tile 3  — red heart/crystal
+  CROPS: 18,       // tile 17 — grass with yellow (crop stand-in)
+  FORGE: 53,       // tile 52 — red building tile
+  BOOKSHELF: 4,    // tile 3  — red heart/crystal
+  SIGNBOARD: 93,   // tile 92 — small red/yellow sign
+  CHEST: 4,        // tile 3  — red heart/crystal (chest stand-in)
+  FLOWER: 93,      // tile 92 — small red/yellow decor
+  BUSH: 17,        // tile 16 — bush on grass
+  TUFT: 98,        // tile 97 — gray path tile
+  TREE_ALT: 5,     // tile 4  — grass with dark variation
+  ROCK: 79,        // tile 78 — gray decorative
+  FENCE: 2,        // tile 1 — wooden fence segment (CORRECTED: actual Kenney index)
+  FENCE_L: 2,      // tile 1  — fence left end (CORRECTED: actual Kenney index)
+  FENCE_R: 12      // tile 11 — fence right end (CORRECTED: actual Kenney index)
 };
 
 // Decoration tiles the player CANNOT walk through (obstacles)
 export const COLLIDABLE_DECOS = [
   DECO_TILES.TREE, DECO_TILES.TREE_ALT, DECO_TILES.WALL, DECO_TILES.TEMPLE_WALL,
-  DECO_TILES.RUINED_COL, DECO_TILES.ROCK, DECO_TILES.CHEST
+  DECO_TILES.RUINED_COL, DECO_TILES.ROCK, DECO_TILES.CHEST, DECO_TILES.FENCE
 ];
 
 // Decorative ground cover that is purely visual (walkable)
@@ -67,19 +66,19 @@ export const WALKABLE_DECOR = [
 ];
 
 // Multi-tile shrine (3x3) drawn around an anchor tile
-export const SHRINE_3x3 = [307, 308, 309, 368, 369, 370, 429, 430, 431];
+export const SHRINE_3x3 = [1, 1, 1, 1, 4, 1, 1, 1, 1];
 
-// Interior defaults (wood floor / brick wall) on the 61-col grid
-export const INTERIOR_FLOOR = 132; // brown wood-ish floor
-export const INTERIOR_WALL = 74;   // stone/brick wall
+// Interior defaults (dungeon floor / wall) on the 12-col grid
+export const INTERIOR_FLOOR = 5;  // dungeon tile 4 — gray stone floor
+export const INTERIOR_WALL = 1;   // dungeon tile 0 — red brick wall
 
-// House-exterior prefab tiles (verified — red roof + cream wall + blue door).
-// Used by TileMap.placeHouse() to stamp a 3-tall roofed building whose door
-// sits on a map warp. The whole footprint is collidable except the door tile,
-// which is walkable because it coincides with a warp coordinate.
+// House-exterior prefab tiles (Kenney tiny-town stone building tiles).
+// Uses the stone building facade tiles (84-88) to construct a 3-tall, 4-wide
+// building that looks like a Kenney tiny-town stone cottage rather than a
+// Pokémon red-roof house.
 export const HOUSE_TILES = {
-  ROOF_L: 306, ROOF_M: [307, 308], ROOF_R: 310,
-  EAVE_L: 428, EAVE_M: [429, 431], EAVE_R: 432, // roof eave + windows
-  WALL_L: 492, WALL_M: [493, 492], WALL_R: 493,
-  DOOR: 491
+  ROOF_L: 86, ROOF_M: [86, 86], ROOF_R: 87,
+  EAVE_L: 85, EAVE_M: [88, 88], EAVE_R: 87,
+  WALL_L: 88, WALL_M: [88, 88], WALL_R: 87,
+  DOOR: 107
 };

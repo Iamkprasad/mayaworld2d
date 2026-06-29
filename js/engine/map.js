@@ -9,8 +9,8 @@ import {
   COLLIDABLE_DECOS, HOUSE_TILES
 } from '../data/tiles.js';
 
-// Tiles are 1-based indices into backgrounds.png (61-col, 17px-stride grid).
-// See js/data/tiles.js for the verified mapping.
+// Tiles are 1-based indices into kenney_terrain.png (12-col, 16px-stride grid).
+// See js/data/tiles.js for the mapping.
 
 // Shared tile sheet — all TileMap instances reuse this single Image
 const _sharedTileSheet = new Image();
@@ -56,7 +56,7 @@ export class TileMap {
       VOID: 9
     };
 
-    // Verified decoration indices into backgrounds.png (61-col grid). See js/data/tiles.js
+    // Decoration indices into kenney_terrain.png (12-col grid). See js/data/tiles.js
     this.DECOS = { ...DECO_TILES };
 
     // Use shared tile sheet — no per-map Image allocation
@@ -111,62 +111,116 @@ export class TileMap {
     } 
     
     else if (this.type === 'village') {
-      // Hand-authored Suryanagar: houses sit on the map's warp tiles so the
-      // visible door is exactly where the player transitions. (Map 1 warps:
-      // 12,24 -> Ashram | 34,28 -> Farmhouse | 56,32 -> Hut)
+      // Organic Kenney-style village (40x40). No grid or right angles —
+      // winding paths, clustered stone cottages, central plaza with well,
+      // fenced garden plots, and market stalls.
+      // Houses sit on warp tiles: Ashram (8,12) | Farmhouse (30,12) | Hut (8,28)
+      // Exits: south shrine (19,38) | north grove (19,1) | east volcano (38,18) | east coast (38,30)
       const W = this.width;
       this.baseGrid.fill(this.TILES.GRASS);
 
-      // --- River along the far west (sandy banks added later by shorePass) ---
+      // 1. Winding stream along the far west bank
       for (let y = 0; y < this.height; y++) {
-        const rx = Math.floor(7 + Math.sin(y * 0.12) * 2);
-        for (let x = rx - 2; x <= rx + 2; x++) {
+        const rx = Math.floor(3 + Math.sin(y * 0.18) * 1.4);
+        for (let x = rx - 1; x <= rx + 1; x++) {
           if (x >= 0 && x < W) this.baseGrid[y * W + x] = this.TILES.WATER;
         }
       }
 
-      // --- Central plaza (stone) with a well ---
-      const sqX = 36, sqY = 40, sqW = 9, sqH = 9;
-      for (let y = sqY; y < sqY + sqH; y++)
-        for (let x = sqX; x < sqX + sqW; x++)
-          this.baseGrid[y * W + x] = this.TILES.STONE;
-      this.decoGrid[(sqY + 4) * W + (sqX + 4)] = this.DECOS.RUINED_COL; // well
-
-      // --- Roofed houses whose doors land on the warps ---
-      this.placeHouse(12, 24); // Bhrigu's Ashram
-      this.placeHouse(34, 28); // Reva's Farmhouse
-      this.placeHouse(56, 32); // Village Hut
-
-      // --- Paths: south spawn -> plaza -> north exit (split around plaza) ---
-      this.carvePath(40, 70, 40, sqY + sqH, 2);   // spawn up to plaza south
-      this.carvePath(40, sqY - 1, 40, 1, 2);       // plaza north to grove exit
-      // Branches to each house doormat
-      this.carvePath(12, 25, 12, 44, 2); this.carvePath(12, 44, sqX, 44, 2);
-      this.carvePath(34, 29, 34, sqY, 2);
-      this.carvePath(56, 33, 56, 44, 2); this.carvePath(sqX + sqW - 1, 44, 56, 44, 2);
-      // East trails to the volcano (78,36) and coast (78,25) exits
-      this.carvePath(sqX + sqW, 44, 78, 36, 2);
-      this.carvePath(62, 36, 78, 25, 2);
-
-      // --- Farm crops (northeast) + access path ---
-      for (let y = 8; y <= 15; y++)
-        for (let x = 50; x <= 60; x++)
-          this.decoGrid[y * W + x] = this.DECOS.CROPS;
-      this.carvePath(45, 40, 55, 16, 2);
-
-      // --- Signs & lanterns ---
-      this.decoGrid[(sqY + sqH) * W + sqX] = this.DECOS.SIGNBOARD;
-      this.decoGrid[68 * W + 40] = this.DECOS.SIGNBOARD; // entrance sign
-      for (const ly of [50, 56, 62]) {
-        this.decoGrid[ly * W + 38] = this.DECOS.RUINED_COL;
-        this.decoGrid[ly * W + 42] = this.DECOS.RUINED_COL;
+      // 2. Central organic stone plaza (oval, centred at ~20,20)
+      const cx = 20, cy = 20;
+      for (let y = 14; y < 26; y++) {
+        for (let x = 14; x < 26; x++) {
+          const dx = x - cx, dy = y - cy;
+          const dist = Math.abs(dx) + Math.abs(dy) / 1.5;
+          if (dist < 6) this.baseGrid[y * W + x] = this.TILES.STONE;
+          else if (dist < 7.5 && this.rand(x, y, 1) > 0.4) this.baseGrid[y * W + x] = this.TILES.STONE;
+        }
       }
 
-      // --- Spawn stone pad at south entrance ---
+      // 3. Winding stone path from spawn (19,36) up to the plaza
+      this.carvePath(19, 36, 19, 34, 2, this.TILES.STONE);
+      this.carvePath(19, 34, 18, 32, 2, this.TILES.STONE);
+      this.carvePath(18, 32, 18, 30, 2, this.TILES.STONE);
+      this.carvePath(18, 30, 19, 28, 2, this.TILES.STONE);
+      this.carvePath(19, 28, 20, 26, 2, this.TILES.STONE);
+      this.carvePath(20, 26, 20, 24, 2, this.TILES.STONE);
+
+      // 4. Dirt paths from plaza to houses and exits with organic bends
+      // Ashram path (plaza → west)
+      this.carvePath(14, 20, 12, 20, 2, this.TILES.DIRT);
+      this.carvePath(12, 20, 10, 18, 2, this.TILES.DIRT);
+      this.carvePath(10, 18, 8, 15, 2, this.TILES.DIRT);
+      // Farmhouse path (plaza → NE)
+      this.carvePath(24, 18, 28, 16, 2, this.TILES.DIRT);
+      this.carvePath(28, 16, 30, 14, 2, this.TILES.DIRT);
+      // Hut path (plaza → SW)
+      this.carvePath(14, 24, 12, 26, 2, this.TILES.DIRT);
+      this.carvePath(12, 26, 10, 28, 2, this.TILES.DIRT);
+      this.carvePath(10, 28, 8, 29, 2, this.TILES.DIRT);
+      // North path (plaza → north exit 19,1)
+      this.carvePath(20, 14, 20, 10, 2, this.TILES.DIRT);
+      this.carvePath(20, 10, 19, 4, 2, this.TILES.DIRT);
+      // East paths (plaza → volcano 38,18 and coast 38,30)
+      this.carvePath(25, 18, 30, 18, 2, this.TILES.DIRT);
+      this.carvePath(30, 18, 35, 18, 2, this.TILES.DIRT);
+      this.carvePath(35, 18, 38, 18, 2, this.TILES.DIRT);
+      this.carvePath(25, 22, 30, 25, 2, this.TILES.DIRT);
+      this.carvePath(30, 25, 35, 28, 2, this.TILES.DIRT);
+      this.carvePath(35, 28, 38, 30, 2, this.TILES.DIRT);
+
+      // 5. Houses (Kenney stone building tiles via updated HOUSE_TILES)
+      this.placeHouse(8, 12);   // Bhrigu's Ashram
+      this.placeHouse(30, 12);  // Reva's Farmhouse
+      this.placeHouse(8, 28);   // Village Hut
+
+      // 6. Fenced garden plots near farmhouse (north of farmhouse)
+      for (let x = 25; x <= 29; x++) {
+        this.decoGrid[4 * W + x] = this.DECOS.FENCE;
+        this.decoGrid[8 * W + x] = this.DECOS.FENCE;
+      }
+      for (let y = 5; y <= 7; y++) {
+        this.decoGrid[y * W + 25] = this.DECOS.FENCE;
+        this.decoGrid[y * W + 29] = this.DECOS.FENCE;
+      }
+      // Crops inside fenced garden
+      for (let y = 5; y <= 7; y++)
+        for (let x = 26; x <= 28; x++)
+          this.decoGrid[y * W + x] = this.DECOS.CROPS;
+
+      // 7. Market stalls (small 2-wide structures) around plaza
+      this.decoGrid[16 * W + 25] = this.DECOS.WALL;
+      this.decoGrid[16 * W + 26] = this.DECOS.WALL;
+      this.decoGrid[17 * W + 25] = this.DECOS.WALL;
+      this.decoGrid[17 * W + 26] = this.DECOS.WALL;
+
+      // 8. Well / old shrine in plaza centre
+      this.decoGrid[cy * W + cx] = this.DECOS.RUINED_COL;
+
+      // 9. Decorative elements
+      this.decoGrid[(cy + 3) * W + (cx - 2)] = this.DECOS.SIGNBOARD;
+      this.decoGrid[(cy - 3) * W + (cx + 2)] = this.DECOS.SIGNBOARD;
+      this.decoGrid[34 * W + 19] = this.DECOS.SIGNBOARD; // entrance sign
+
+      // 10. Organic tree scatter along edges and between houses
+      for (let y = 2; y < this.height - 2; y++) {
+        for (let x = 2; x < this.width - 2; x++) {
+          const idx = y * W + x;
+          if (this.baseGrid[idx] !== this.TILES.GRASS) continue;
+          if (this.decoGrid[idx] !== this.DECOS.EMPTY) continue;
+          if (this.ruinsGrid[idx] !== 0) continue;
+          const isWarp = this.warps.some(w => Math.abs(w.x - x) <= 2 && Math.abs(w.y - y) <= 2);
+          if (isWarp) continue;
+          const noise = Math.sin(x * 0.3) * Math.sin(y * 0.3);
+          if (noise > 0.4 && this.rand(x, y, 1) > 0.6) this.decoGrid[idx] = this.DECOS.TREE;
+        }
+      }
+
+      // 11. Spawn stone pad at south entrance (19,36)
       for (let dy = -1; dy <= 1; dy++)
         for (let dx = -1; dx <= 1; dx++) {
-          this.baseGrid[(70 + dy) * W + (40 + dx)] = this.TILES.STONE;
-          this.decoGrid[(70 + dy) * W + (40 + dx)] = this.DECOS.EMPTY;
+          this.baseGrid[(36 + dy) * W + (19 + dx)] = this.TILES.STONE;
+          this.decoGrid[(36 + dy) * W + (19 + dx)] = this.DECOS.EMPTY;
         }
     }
     
@@ -181,40 +235,26 @@ export class TileMap {
     else if (this.type === 'forest' || this.type === 'dense_forest') {
       this.baseGrid.fill(this.TILES.GRASS);
       
-      // organic winding trails
-      for (let y = 5; y < this.height - 5; y++) {
-        const px = Math.floor(this.width/2 + Math.sin(y * 0.1) * 12);
-        for (let x = px - 3; x <= px + 3; x++) {
+      // Subtle winding trail down the middle (purely visual flavour)
+      for (let y = 3; y < this.height - 3; y++) {
+        const px = Math.floor(this.width / 2 + Math.sin(y * 0.25) * 4);
+        for (let x = px - 1; x <= px + 1; x++) {
           this.baseGrid[y * this.width + x] = this.TILES.DIRT;
         }
       }
 
-      // Vashistha's Hermitage in the grove — door on warp (16,21)
-      if (this.type === 'forest') {
-        this.placeHouse(16, 21);
-        // Carve connection path from Hermitage door to the main trail
-        this.carvePath(16, 22, 50, 22, 2);
-      }
-
-      // Connect warps to main trail on Sacred Grove Entrance (Map 6)
+      // Map 6 — Sacred Grove: Hermitage + explicit trails to all four warps.
+      // (door 12,28 | south 20,38 | north 20,1 | west 1,20)
       if (this.id === 6) {
-        const southTrailX = Math.floor(this.width/2 + Math.sin(74 * 0.1) * 12);
-        this.carvePath(40, 79, southTrailX, 74, 2);
-
-        const northTrailX = Math.floor(this.width/2 + Math.sin(5 * 0.1) * 12);
-        this.carvePath(40, 1, northTrailX, 5, 2);
-
-        const midTrailX = Math.floor(this.width/2 + Math.sin(40 * 0.1) * 12);
-        this.carvePath(1, 40, midTrailX, 40, 2);
+        this.placeHouse(12, 28); // Vashistha's Hermitage
+        this.carvePath(20, 38, 20, 1, 2);   // south <-> north avenue
+        this.carvePath(20, 29, 12, 29, 2);  // avenue -> hermitage doormat
+        this.carvePath(20, 20, 1, 20, 2);   // west exit to the snowy pass
       }
 
-      // Connect warps to main trail on Canopy of Roots (Map 8)
+      // Map 8 — Canopy of Roots: avenue connects both warps (20,38)<->(20,1)
       if (this.id === 8) {
-        const southTrailX = Math.floor(this.width/2 + Math.sin(74 * 0.1) * 12);
-        this.carvePath(40, 79, southTrailX, 74, 2);
-
-        const caveTrailX = Math.floor(this.width/2 + Math.sin(13 * 0.1) * 12);
-        this.carvePath(70, 13, caveTrailX, 13, 2);
+        this.carvePath(20, 38, 20, 1, 2);
       }
 
       // Fill rest with dense trees using smooth clump noise, keeping paths/warps/houses clear
@@ -403,24 +443,24 @@ export class TileMap {
     else if (this.type === 'volcano' || this.type === 'volcano_peaks') {
       this.baseGrid.fill(this.TILES.STONE); // Obsidian rock fields
 
-      // Lava channels with crossings (bridges)
+      // Lava channel on the east flank, width-relative and clamped in-bounds.
+      // The central y≈18-22 band is kept lava-free as the traversal corridor.
       for (let y = 0; y < this.height; y++) {
-        if ((y >= 37 && y <= 43) || (y >= 12 && y <= 18)) continue;
-
-        const lx = Math.floor(35 + Math.sin(y * 0.1) * 8);
-        for (let x = lx - 3; x <= lx + 3; x++) {
-          this.baseGrid[y * this.width + x] = this.TILES.LAVA;
+        if (y >= 18 && y <= 22) continue;
+        const lx = Math.floor(this.width * 0.72 + Math.sin(y * 0.2) * 3);
+        for (let x = lx - 2; x <= lx + 2; x++) {
+          if (x >= 0 && x < this.width) this.baseGrid[y * this.width + x] = this.TILES.LAVA;
         }
       }
 
-      // Daksha's Forge fortress on ascent path — door on warp (60,25)
+      // Map 10 — Volcanic Ascent: Daksha's Forge + roads to all four warps.
+      // (west 1,20 | forge door 28,18 | north 20,1 | east 38,30)
       if (this.id === 10) {
-        this.placeHouse(60, 25);
-
-        // Roads
-        this.carvePath(1, 40, 78, 40, 2);
-        this.carvePath(50, 40, 60, 25, 2);
-        this.carvePath(60, 25, 40, 9, 2);
+        this.placeHouse(28, 18);
+        this.carvePath(1, 20, 38, 20, 2);   // west <-> east main road
+        this.carvePath(28, 20, 28, 19, 2);  // road -> forge doormat
+        this.carvePath(20, 20, 20, 1, 2);   // road -> north lava-cave warp
+        this.carvePath(20, 20, 38, 30, 2);  // road -> east crag-heights warp
       }
 
       // Scatter basalt rocks organically
@@ -454,9 +494,9 @@ export class TileMap {
     else if (this.type === 'coastal' || this.type === 'beach') {
       this.baseGrid.fill(this.TILES.SAND);
 
-      // Coastal water bays
+      // Coastal water bays — right ~30% of the 40-wide map
       for (let y = 0; y < this.height; y++) {
-        for (let x = 50; x < this.width; x++) {
+        for (let x = 28; x < this.width; x++) {
           this.baseGrid[y * this.width + x] = this.TILES.WATER;
         }
       }
@@ -464,31 +504,54 @@ export class TileMap {
       // Ruined ancient pillars in water
       for (let i = 0; i < this.baseGrid.length; i++) {
         const x = i % this.width;
-        if (this.baseGrid[i] === this.TILES.WATER && Math.random() < 0.05 && x > 55) {
+        if (this.baseGrid[i] === this.TILES.WATER && Math.random() < 0.05 && x > 30) {
           this.decoGrid[i] = this.DECOS.RUINED_COL;
         }
+      }
+
+      // Map 14 — Submerged Column Hall: paths connecting all three warps
+      // (west 1,20 | sanctuary door 20,6 | east 38,20)
+      if (this.id === 14) {
+        this.carvePath(1, 20, 20, 20, 2);   // west entry to center
+        this.carvePath(20, 20, 20, 6, 2);   // center up to sanctuary door
+        this.carvePath(20, 20, 26, 20, 2);  // center to waterfront (east warp at 38,20 is in water — bridge needed)
+        // Bridge across the water to the east warp
+        for (let x = 26; x <= 38; x++) {
+          this.baseGrid[20 * this.width + x] = this.TILES.SAND;
+          this.decoGrid[20 * this.width + x] = this.DECOS.BRIDGE;
+          this.baseGrid[21 * this.width + x] = this.TILES.SAND;
+          this.decoGrid[21 * this.width + x] = this.DECOS.BRIDGE;
+        }
+      }
+
+      // Map 16 — Coral Reef Shore: paths connecting warps
+      // (west 1,20 | south cave 14,38)
+      if (this.id === 16) {
+        this.carvePath(1, 20, 14, 20, 2);   // west entry east along shore
+        this.carvePath(14, 20, 14, 38, 2);  // south to tidal ruins cave
       }
     } 
     
     else if (this.type === 'snow_pass' || this.type === 'summit') {
       this.baseGrid.fill(this.TILES.SNOW); // white snow ground
       
-      // Ice patch sliding sheets
-      for (let y = 15; y < 25; y++) {
-        for (let x = 20; x < 40; x++) {
+      // Ice patch sliding sheets — compact for 40×40
+      for (let y = 10; y < 18; y++) {
+        for (let x = 12; x < 28; x++) {
           const idx = y * this.width + x;
           this.baseGrid[idx] = this.TILES.WATER; // Water acts as ice
           this.decoGrid[idx] = this.DECOS.BRIDGE; // ice overlay board
         }
       }
 
-      // Cabin house on Snowy pass — door on warp (30,21)
+      // Cabin house on Snowy pass — door on warp (20,28)
       if (this.id === 18) {
-        this.placeHouse(30, 21);
+        this.placeHouse(20, 28);
 
-        // Snowy roads
-        this.carvePath(78, 40, 30, 21, 2);
-        this.carvePath(30, 21, 20, 1, 2);
+        // Snowy roads connecting warps: east(38,20) → hermitage(20,28) → north(20,1)
+        this.carvePath(38, 20, 20, 20, 2);
+        this.carvePath(20, 20, 20, 29, 2);  // road to hermitage doormat
+        this.carvePath(20, 20, 20, 1, 2);   // road north to summit exit
       }
 
       // Altar relic chest on Silent Peak Summit
@@ -540,16 +603,22 @@ export class TileMap {
       }
 
       if (this.type === 'temple_altar') {
-        // Altar pedestal in center
-        this.decoGrid[40 * this.width + 40] = this.DECOS.ALTAR;
+        // Altar pedestal in center — (20,20) for 40×40 map
+        this.decoGrid[20 * this.width + 20] = this.DECOS.ALTAR;
+
+        // Map 21 paths connecting warps: south(20,38) ↔ altar ↔ north portal(20,8)
+        if (this.id === 21) {
+          this.carvePath(20, 38, 20, 8, 2);
+        }
       }
     } 
     
     else if (this.type === 'void') {
       this.baseGrid.fill(this.TILES.WATER); // cosmic background void
       
-      // Draw floating stone pathways
-      for (let y = 10; y < this.height - 10; y++) {
+      // Draw floating stone pathways — extend from y=3 to y=height-1 so spawn
+      // and south warp are reachable (they sit near y=36/38).
+      for (let y = 3; y < this.height - 1; y++) {
         const px = Math.floor(this.width/2);
         for (let x = px - 3; x <= px + 3; x++) {
           this.baseGrid[y * this.width + x] = this.TILES.STONE;
@@ -676,7 +745,7 @@ export class TileMap {
   // Stamp a 3-tall roofed house exterior whose door sits at (doorX, doorY).
   // The whole footprint goes into ruinsGrid (collidable); the door tile is
   // walkable only because (doorX, doorY) is also a warp coordinate.
-  placeHouse(doorX, doorY, w = 4) {
+  placeHouse(doorX, doorY, width = 4) {
     const W = this.width, H = this.height, h = 3, doorLocal = 1;
     const left = doorX - doorLocal;
     const top = doorY - (h - 1);
@@ -684,14 +753,14 @@ export class TileMap {
     for (let row = 0; row < h; row++) {
       const y = top + row;
       if (y < 0 || y >= H) continue;
-      for (let col = 0; col < w; col++) {
+      for (let col = 0; col < width; col++) {
         const x = left + col;
         if (x < 0 || x >= W) continue;
         const idx = y * W + x;
         let tile;
-        if (row === 0) tile = col === 0 ? HT.ROOF_L : col === w - 1 ? HT.ROOF_R : HT.ROOF_M[col % 2];
-        else if (row === 1) tile = col === 0 ? HT.EAVE_L : col === w - 1 ? HT.EAVE_R : HT.EAVE_M[col % 2];
-        else tile = col === 0 ? HT.WALL_L : col === w - 1 ? HT.WALL_R : HT.WALL_M[col % 2];
+        if (row === 0) tile = col === 0 ? HT.ROOF_L : col === width - 1 ? HT.ROOF_R : HT.ROOF_M[(col - 1) % HT.ROOF_M.length];
+        else if (row === 1) tile = col === 0 ? HT.EAVE_L : col === width - 1 ? HT.EAVE_R : HT.EAVE_M[(col - 1) % HT.EAVE_M.length];
+        else tile = col === 0 ? HT.WALL_L : col === width - 1 ? HT.WALL_R : HT.WALL_M[(col - 1) % HT.WALL_M.length];
         if (row === h - 1 && x === doorX) tile = HT.DOOR;
         this.ruinsGrid[idx] = tile;
         this.decoGrid[idx] = this.DECOS.EMPTY; // keep trees/decor off the house
@@ -738,7 +807,7 @@ export class TileMap {
     this.carveBuilding(sx, sy, 8, 5, this.DECOS.FORGE);
   }
 
-  carvePath(x1, y1, x2, y2, width = 2) {
+  carvePath(x1, y1, x2, y2, width = 2, tile = this.TILES.DIRT) {
     let curX = x1;
     let curY = y1;
     const carve = (cx, cy) => {
@@ -747,7 +816,7 @@ export class TileMap {
           const nx = cx + dx;
           const ny = cy + dy;
           if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
-            this.baseGrid[ny * this.width + nx] = this.TILES.DIRT;
+            this.baseGrid[ny * this.width + nx] = tile;
           }
         }
       }
@@ -799,8 +868,9 @@ export class TileMap {
       return true;
     }
 
-    // Check ruins/buildings overlays (walls/roofs collide)
-    if (this.ruinsGrid[idx] > 0) {
+    // Check ruins/buildings overlays (walls/roofs collide, door is walkable)
+    const ruinTile = this.ruinsGrid[idx];
+    if (ruinTile > 0 && ruinTile !== HOUSE_TILES.DOOR) {
       return true;
     }
 
@@ -846,39 +916,45 @@ export class TileMap {
       return;
     }
 
-    const camTileX = Math.floor(camera.x / this.tileSize);
-    const camTileY = Math.floor(camera.y / this.tileSize);
+    const ts = this.tileSize;
+    const camTileX = Math.floor(camera.x / ts);
+    const camTileY = Math.floor(camera.y / ts);
 
-    const tilesW = Math.ceil(camera.width / this.tileSize) + 2;
-    const tilesH = Math.ceil(camera.height / this.tileSize) + 2;
+    const tilesW = Math.ceil(camera.width / ts) + 2;
+    const tilesH = Math.ceil(camera.height / ts) + 2;
 
-    const offsetX = Math.round(-(camera.x - camTileX * this.tileSize));
-    const offsetY = Math.round(-(camera.y - camTileY * this.tileSize));
+    const offsetX = Math.round(-(camera.x - camTileX * ts));
+    const offsetY = Math.round(-(camera.y - camTileY * ts));
 
-    for (let y = 0; y < tilesH; y++) {
-      for (let x = 0; x < tilesW; x++) {
-        const mapX = camTileX + x;
-        const mapY = camTileY + y;
-        if (mapX < 0 || mapX >= this.width || mapY < 0 || mapY >= this.height) continue;
-
-        const idx = mapY * this.width + mapX;
-        const px = offsetX + x * this.tileSize;
-        const py = offsetY + y * this.tileSize;
-
-        const tile = this.baseGrid[idx];
-        this.drawGBATile(ctx, this.getTileIndexForType(tile), px, py);
-
-        const structure = this.ruinsGrid[idx];
-        if (structure > 0) {
-          this.drawGBATile(ctx, structure, px, py);
-        }
-
-        const deco = this.decoGrid[idx];
-        if (deco !== this.DECOS.EMPTY) {
-          this.drawDeco(ctx, deco, px, py);
-        }
-      }
+    // The base/structure/deco layers are static while the player walks within a
+    // tile. Re-rasterising ~600 drawImage calls every frame is what made walking
+    // feel heavy, so we cache the visible tiles to an offscreen canvas and only
+    // rebuild it when the camera crosses a tile boundary, the tile sheet swaps
+    // (epoch change), or a tile mutates (corruption/ruins → invalidateCache()).
+    const cacheW = tilesW * ts;
+    const cacheH = tilesH * ts;
+    if (!this._tileCacheCanvas ||
+        this._tileCacheCanvas.width !== cacheW ||
+        this._tileCacheCanvas.height !== cacheH) {
+      this._tileCacheCanvas = document.createElement('canvas');
+      this._tileCacheCanvas.width = cacheW;
+      this._tileCacheCanvas.height = cacheH;
+      this._tileCacheCtx = this._tileCacheCanvas.getContext('2d');
+      this._tileCacheCtx.imageSmoothingEnabled = false;
+      this._cacheCamTileX = NaN; // force a rebuild below
     }
+
+    const sheetSrc = this.tileSheet.src;
+    if (camTileX !== this._cacheCamTileX ||
+        camTileY !== this._cacheCamTileY ||
+        sheetSrc !== this._cacheSheetSrc) {
+      this._cacheCamTileX = camTileX;
+      this._cacheCamTileY = camTileY;
+      this._cacheSheetSrc = sheetSrc;
+      this._rebuildTileCache(camTileX, camTileY, tilesW, tilesH);
+    }
+
+    ctx.drawImage(this._tileCacheCanvas, offsetX, offsetY);
 
     // Per-region ambient palette — multiply-blend a mood color over the tiles
     // only (entities are drawn afterwards by the game loop, so they stay clean).
@@ -889,6 +965,34 @@ export class TileMap {
       ctx.fillStyle = tint;
       ctx.fillRect(0, 0, camera.width, camera.height);
       ctx.restore();
+    }
+  }
+
+  // Rasterise the static tile layers for the visible window into the offscreen
+  // cache, in cache-local pixel coordinates (top-left tile = 0,0).
+  _rebuildTileCache(camTileX, camTileY, tilesW, tilesH) {
+    const cctx = this._tileCacheCtx;
+    const ts = this.tileSize;
+    cctx.clearRect(0, 0, this._tileCacheCanvas.width, this._tileCacheCanvas.height);
+
+    for (let y = 0; y < tilesH; y++) {
+      for (let x = 0; x < tilesW; x++) {
+        const mapX = camTileX + x;
+        const mapY = camTileY + y;
+        if (mapX < 0 || mapX >= this.width || mapY < 0 || mapY >= this.height) continue;
+
+        const idx = mapY * this.width + mapX;
+        const px = x * ts;
+        const py = y * ts;
+
+        this.drawGBATile(cctx, this.getTileIndexForType(this.baseGrid[idx]), px, py);
+
+        const structure = this.ruinsGrid[idx];
+        if (structure > 0) this.drawGBATile(cctx, structure, px, py);
+
+        const deco = this.decoGrid[idx];
+        if (deco !== this.DECOS.EMPTY) this.drawDeco(cctx, deco, px, py);
+      }
     }
   }
 
@@ -914,8 +1018,11 @@ export class TileMap {
     }
   }
 
+  // Force the offscreen tile cache to rebuild on the next draw(). Call after any
+  // mutation to baseGrid/decoGrid/ruinsGrid (corruption spread/purify, ruins
+  // collapse) so the change is visible without waiting for a camera tile cross.
   invalidateCache() {
-    // Cache is deprecated for direct hardware-accelerated canvas drawing
+    this._cacheCamTileX = NaN;
   }
 
   drawDeco(ctx, deco, px, py) {

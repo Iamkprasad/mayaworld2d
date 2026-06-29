@@ -45,14 +45,14 @@ export class Player {
     this._cachedTotalVidyaLevels = 0;
     this.trueNameKnown = false;
     
-    // GBA Sprite Asset Setup
+    // Kenney 16x16 sprite — 4 directions (cols) x 4 walk frames (rows)
     this.spriteSheet = new Image();
     this.spriteSheet.onerror = () => {
-      console.warn('Failed to load player sprite: assets/images/player.png');
+      console.warn('Failed to load player sprite: assets/images/kenney_player.png');
     };
-    this.spriteSheet.src = 'assets/images/player.png';
-    this.spriteWidth = 15;
-    this.spriteHeight = 22;
+    this.spriteSheet.src = 'assets/images/kenney_player.png';
+    this.spriteWidth = 16;
+    this.spriteHeight = 16;
     this.walkFrame = 0;
     this._walkTimer = 0;
   }
@@ -81,14 +81,7 @@ export class Player {
   }
 
   updateSpriteSheet() {
-    let targetSrc = 'assets/images/player_young.png';
-    if (this.isAstral) {
-      targetSrc = 'assets/images/player_astral.png';
-    } else if (this.karmaShadow > 30 || this.karmaBalance < -20) {
-      targetSrc = 'assets/images/player_corrupted.png';
-    } else if (this.age >= 40) {
-      targetSrc = 'assets/images/player_old.png';
-    }
+    let targetSrc = 'assets/images/kenney_player.png';
     
     if (this.spriteSheet.src.indexOf(targetSrc) === -1) {
       this.spriteSheet.src = targetSrc;
@@ -102,11 +95,11 @@ export class Player {
       const step = this.speed * clockSpeedMultiplier * dtScale;
       this.movingProgress += step;
       
-      // Cycle walking frames (1 to 5) using deltaTime
+      // Cycle walking frames (0-3) using deltaTime
       this._walkTimer += deltaTime;
       if (this._walkTimer >= 100) {
         this._walkTimer = 0;
-        this.walkFrame = (this.walkFrame % 5) + 1;
+        this.walkFrame = (this.walkFrame + 1) % 4;
       }
       
       if (this.movingProgress >= 1.0) {
@@ -202,10 +195,7 @@ export class Player {
       ctx.stroke();
     }
 
-    // Draw GBA sprite from sheets
-    const drawHeight = Math.floor(ts * (22 / 15));
-    const drawYOffset = Math.floor(ts * 0.4);
-
+    // Draw Kenney sprite (16x16, scaled to tile)
     ctx.drawImage(
       this.spriteSheet, 
       this.spriteWidth * this.direction, 
@@ -213,9 +203,9 @@ export class Player {
       this.spriteWidth, 
       this.spriteHeight, 
       screenPos.x, 
-      screenPos.y - drawYOffset + bobOffset,
+      screenPos.y + bobOffset,
       ts, 
-      drawHeight
+      ts
     );
 
     // Draw active meditation aura
