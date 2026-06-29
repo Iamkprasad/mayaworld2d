@@ -74,12 +74,16 @@ export class SamsaraSystem {
       this.echoesList.appendChild(p);
     }
 
-    // Show overlay
+    // Show overlay with fade-in
     this.dreamingOverlay.classList.remove('hidden');
+    requestAnimationFrame(() => this.dreamingOverlay.classList.add('visible'));
   }
 
   resolveRebirth(vidyaKey) {
-    this.dreamingOverlay.classList.add('hidden');
+    this.dreamingOverlay.classList.remove('visible');
+    this.dreamingOverlay.addEventListener('transitionend', () => {
+      this.dreamingOverlay.classList.add('hidden');
+    }, { once: true });
     
     // Triggers Mauna condition 3 if player walks away and sits in silence (chooses no voice)
     if (vidyaKey === null) {

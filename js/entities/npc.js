@@ -33,11 +33,11 @@ export class NPC {
     
     this.spriteSheet = new Image();
     this.spriteSheet.onerror = () => {
-      console.warn('Failed to load NPC sprite: assets/images/npc.png');
+      console.warn('Failed to load NPC sprite: assets/images/kenney_npc.png');
     };
-    this.spriteSheet.src = 'assets/images/npc.png';
+    this.spriteSheet.src = 'assets/images/kenney_npc.png';
     this.spriteWidth = 16;
-    this.spriteHeight = 21;
+    this.spriteHeight = 16;
     this.walkFrame = 0;
     this._npcWalkTimer = 0;
   }
@@ -49,12 +49,7 @@ export class NPC {
   updateSpriteSheet(epochId, mayasurAttackActive) {
     if (this.type === 'mayasur' || this.type === 'wanderer') return;
 
-    let targetSrc = 'assets/images/npc.png';
-    if (mayasurAttackActive && this.type === 'civilian') {
-      targetSrc = 'assets/images/npc_corrupted.png';
-    } else if (epochId >= 6) {
-      targetSrc = 'assets/images/npc_old.png';
-    }
+    let targetSrc = 'assets/images/kenney_npc.png';
 
     if (this.spriteSheet.src.indexOf(targetSrc) === -1) {
       this.spriteSheet.src = targetSrc;
@@ -99,7 +94,7 @@ export class NPC {
       this._npcWalkTimer += deltaTime;
       if (this._npcWalkTimer >= 150) {
         this._npcWalkTimer = 0;
-        this.walkFrame = this.walkFrame === 1 ? 2 : 1;
+        this.walkFrame = (this.walkFrame + 1) % 4;
       }
       
       if (this.movingProgress >= 1.0) {
@@ -123,8 +118,8 @@ export class NPC {
     // Mayasur Flee Behavior
     if (mayasurAttackActive && this.type === 'civilian') {
       this.state = 'fleeing';
-      const targetShrineX = 40;
-      const targetShrineY = 70;
+      const targetShrineX = 19;
+      const targetShrineY = 36;
       
       const dx = Math.sign(targetShrineX - this.x);
       const dy = Math.sign(targetShrineY - this.y);
@@ -258,23 +253,22 @@ export class NPC {
       return;
     }
 
-    // Draw Sage / Civilian from sheet using coordinates
-    const srcX = (this.spriteWidth * this.direction) + (this.imagePoss.x * 64);
-    const srcY = (this.spriteHeight * this.walkFrame) + (this.imagePoss.y * 84);
+    // Draw Kenney NPC (16x16, scaled to tile).
+    // Sheet layout: 4 NPC color variants (cols) x 4 walk frames (rows), 64x64 total.
+    // imagePoss.x selects the NPC column (0-3), walkFrame selects the row (0-3).
+    const srcX = this.spriteWidth * this.imagePoss.x;
+    const srcY = this.spriteHeight * this.walkFrame;
     const sheet = this._getTintedSheet() || this.spriteSheet;
     const sheetW = sheet.naturalWidth || sheet.width || 0;
     const sheetH = sheet.naturalHeight || sheet.height || 0;
 
     if (srcX + this.spriteWidth <= sheetW && srcY + this.spriteHeight <= sheetH) {
-      const drawHeight = Math.floor(ts * (21 / 16));
-      const drawYOffset = Math.floor(ts * 0.3);
-
       ctx.drawImage(
         sheet,
         srcX, srcY,
         this.spriteWidth, this.spriteHeight,
-        screenPos.x, screenPos.y - drawYOffset,
-        ts, drawHeight
+        screenPos.x, screenPos.y,
+        ts, ts
       );
     } else {
       ctx.fillStyle = '#1a2e27';
@@ -283,22 +277,22 @@ export class NPC {
   }
 }
 
-// Sage profiles mapped to imagePoss grid positions (npc.png: 256x84, 4 slots)
+// Sage profiles mapped to imagePoss grid positions (kenney_npc.png: 64x64, 4 columns)
 export function createSages() {
   return [
     new NPC(101, 'sage', 'Bhrigu', 96, 30, { dialogueKey: 'bhrigu', imagePoss: { x: 0, y: 0 }, tint: 'rgba(210,160,60,0.28)' }),
     new NPC(102, 'sage', 'Pulastya', 26, 80, { dialogueKey: 'pulastya', imagePoss: { x: 1, y: 0 }, tint: 'rgba(80,130,200,0.28)' }),
     new NPC(103, 'sage', 'Pulaha', 48, 14, { dialogueKey: 'pulaha', imagePoss: { x: 2, y: 0 }, tint: 'rgba(60,160,120,0.28)' }),
     new NPC(104, 'sage', 'Kratu', 76, 22, { dialogueKey: 'kratu', imagePoss: { x: 3, y: 0 }, tint: 'rgba(160,110,70,0.28)' }),
-    new NPC(105, 'sage', 'Angiras', 64, 50, { dialogueKey: 'angiras', imagePoss: { x: 0, y: 0 }, tint: 'rgba(220,90,60,0.28)' }),
-    new NPC(106, 'sage', 'Marichi', 20, 26, { dialogueKey: 'marichi', imagePoss: { x: 1, y: 0 }, tint: 'rgba(220,200,80,0.28)' }),
-    new NPC(107, 'sage', 'Atri', 22, 60, { dialogueKey: 'atri', imagePoss: { x: 2, y: 0 }, tint: 'rgba(130,80,180,0.28)' }),
-    new NPC(108, 'sage', 'Vashistha', 64, 84, { dialogueKey: 'vashistha', imagePoss: { x: 3, y: 0 }, tint: 'rgba(60,160,160,0.28)' }),
-    new NPC(109, 'sage', 'Daksha', 105, 36, { dialogueKey: 'daksha', imagePoss: { x: 0, y: 0 }, tint: 'rgba(200,110,40,0.28)' })
+    new NPC(105, 'sage', 'Angiras', 64, 50, { dialogueKey: 'angiras', imagePoss: { x: 0, y: 1 }, tint: 'rgba(220,90,60,0.28)' }),
+    new NPC(106, 'sage', 'Marichi', 20, 26, { dialogueKey: 'marichi', imagePoss: { x: 1, y: 1 }, tint: 'rgba(220,200,80,0.28)' }),
+    new NPC(107, 'sage', 'Atri', 22, 60, { dialogueKey: 'atri', imagePoss: { x: 2, y: 1 }, tint: 'rgba(130,80,180,0.28)' }),
+    new NPC(108, 'sage', 'Vashistha', 64, 84, { dialogueKey: 'vashistha', imagePoss: { x: 3, y: 1 }, tint: 'rgba(60,160,160,0.28)' }),
+    new NPC(109, 'sage', 'Daksha', 105, 36, { dialogueKey: 'daksha', imagePoss: { x: 0, y: 2 }, tint: 'rgba(200,110,40,0.28)' })
   ];
 }
 
-// Civilians mapped to imagePoss grid positions (npc.png: 256x84, 4 slots)
+// Civilians mapped to imagePoss grid positions (kenney_npc.png: 64x64, 4 columns)
 export function createCivilians() {
   const c = [];
   
@@ -357,36 +351,36 @@ export function createCivilians() {
 export function createSagesForMap(mapId) {
   const list = [];
   
-  if (mapId === 1) { // First-life guide beside the village spawn
-    list.push(new NPC(101, 'sage', 'Bhrigu', 40, 67, { dialogueKey: 'bhrigu', imagePoss: { x: 0, y: 0 }, tint: 'rgba(210,160,60,0.28)' }));
+  if (mapId === 1) { // First-life guide on the avenue beside the village spawn
+    list.push(new NPC(101, 'sage', 'Bhrigu', 19, 33, { dialogueKey: 'bhrigu', imagePoss: { x: 0, y: 0 }, tint: 'rgba(210,160,60,0.28)' }));
   }
   else if (mapId === 2) { // Bhrigu's Ashram
     list.push(new NPC(101, 'sage', 'Bhrigu', 10, 10, { dialogueKey: 'bhrigu', imagePoss: { x: 0, y: 0 }, tint: 'rgba(210,160,60,0.28)' }));
   }
-  else if (mapId === 19) { // Mahameru Hermitage (Pulastya)
-    list.push(new NPC(102, 'sage', 'Pulastya', 8, 8, { dialogueKey: 'pulastya', imagePoss: { x: 1, y: 0 }, tint: 'rgba(80,130,200,0.28)' }));
-  }
-  else if (mapId === 15) { // Sanctuary of Time (Pulaha)
-    list.push(new NPC(103, 'sage', 'Pulaha', 16, 16, { dialogueKey: 'pulaha', imagePoss: { x: 2, y: 0 }, tint: 'rgba(60,160,120,0.28)' }));
-  }
-  else if (mapId === 6) { // Sacred Grove Entrance (Kratu)
-    list.push(new NPC(104, 'sage', 'Kratu', 40, 42, { dialogueKey: 'kratu', imagePoss: { x: 3, y: 0 }, tint: 'rgba(160,110,70,0.28)' }));
-  }
-  else if (mapId === 13) { // Crag Heights (Angiras)
-    list.push(new NPC(105, 'sage', 'Angiras', 20, 20, { dialogueKey: 'angiras', imagePoss: { x: 0, y: 0 }, tint: 'rgba(220,90,60,0.28)' }));
-  }
-  else if (mapId === 20) { // Silent Peak Summit (Marichi)
-    list.push(new NPC(106, 'sage', 'Marichi', 20, 20, { dialogueKey: 'marichi', imagePoss: { x: 1, y: 0 }, tint: 'rgba(220,200,80,0.28)' }));
-  }
-  else if (mapId === 21) { // Temple of Vows Altar (Atri)
-    list.push(new NPC(107, 'sage', 'Atri', 40, 45, { dialogueKey: 'atri', imagePoss: { x: 2, y: 0 }, tint: 'rgba(130,80,180,0.28)' }));
-  }
-  else if (mapId === 7) { // Vashistha's Hermitage
-    list.push(new NPC(108, 'sage', 'Vashistha', 10, 10, { dialogueKey: 'vashistha', imagePoss: { x: 3, y: 0 }, tint: 'rgba(60,160,160,0.28)' }));
-  }
-  else if (mapId === 11) { // Volcanic Forge (Daksha)
-    list.push(new NPC(109, 'sage', 'Daksha', 12, 12, { dialogueKey: 'daksha', imagePoss: { x: 0, y: 0 }, tint: 'rgba(200,110,40,0.28)' }));
-  }
+   else if (mapId === 19) { // Mahameru Hermitage (Pulastya)
+     list.push(new NPC(102, 'sage', 'Pulastya', 8, 8, { dialogueKey: 'pulastya', imagePoss: { x: 1, y: 1 }, tint: 'rgba(80,130,200,0.28)' }));
+   }
+   else if (mapId === 15) { // Sanctuary of Time (Pulaha)
+     list.push(new NPC(103, 'sage', 'Pulaha', 16, 16, { dialogueKey: 'pulaha', imagePoss: { x: 2, y: 1 }, tint: 'rgba(60,160,120,0.28)' }));
+   }
+   else if (mapId === 6) { // Sacred Grove Entrance (Kratu)
+     list.push(new NPC(104, 'sage', 'Kratu', 20, 34, { dialogueKey: 'kratu', imagePoss: { x: 3, y: 1 }, tint: 'rgba(160,110,70,0.28)' }));
+   }
+   else if (mapId === 13) { // Crag Heights (Angiras)
+     list.push(new NPC(105, 'sage', 'Angiras', 20, 20, { dialogueKey: 'angiras', imagePoss: { x: 0, y: 1 }, tint: 'rgba(220,90,60,0.28)' }));
+   }
+   else if (mapId === 20) { // Silent Peak Summit (Marichi)
+     list.push(new NPC(106, 'sage', 'Marichi', 20, 20, { dialogueKey: 'marichi', imagePoss: { x: 1, y: 2 }, tint: 'rgba(220,200,80,0.28)' }));
+   }
+   else if (mapId === 21) { // Temple of Vows Altar (Atri)
+     list.push(new NPC(107, 'sage', 'Atri', 20, 24, { dialogueKey: 'atri', imagePoss: { x: 2, y: 2 }, tint: 'rgba(130,80,180,0.28)' }));
+   }
+   else if (mapId === 7) { // Vashistha's Hermitage
+     list.push(new NPC(108, 'sage', 'Vashistha', 10, 10, { dialogueKey: 'vashistha', imagePoss: { x: 3, y: 2 }, tint: 'rgba(60,160,160,0.28)' }));
+   }
+   else if (mapId === 11) { // Volcanic Forge (Daksha)
+     list.push(new NPC(109, 'sage', 'Daksha', 12, 12, { dialogueKey: 'daksha', imagePoss: { x: 0, y: 2 }, tint: 'rgba(200,110,40,0.28)' }));
+   }
   
   return list;
 }
@@ -395,60 +389,60 @@ export function createSagesForMap(mapId) {
 export function createCiviliansForMap(mapId) {
   const c = [];
   
-  if (mapId === 1) { // Suryanagar Village Square
-    c.push(new NPC(201, 'civilian', 'Reva', 30, 70, {
+  if (mapId === 1) { // Suryanagar Village Square (compact 40x40)
+    c.push(new NPC(201, 'civilian', 'Reva', 28, 10, {
       profession: 'farmer',
       dialogueKey: 'farmer',
       imagePoss: { x: 1, y: 0 },
       tint: 'rgba(100,180,80,0.32)',
       schedule: {
-        6: { x: 30, y: 70, state: 'working' },  // farmland
-        12: { state: 'idle' },                   // afternoon wandering
-        17: { x: 40, y: 40, state: 'idle' },    // village centre
-        19: { x: 33, y: 72, state: 'sleeping' },
-        22: { x: 33, y: 72, state: 'sleeping' }
+        6: { x: 29, y: 8, state: 'working' },    // farmland by the crops
+        12: { state: 'idle' },                    // afternoon wandering
+        17: { x: 19, y: 19, state: 'idle' },     // village plaza
+        19: { x: 28, y: 10, state: 'sleeping' },
+        22: { x: 28, y: 10, state: 'sleeping' }
       }
     }));
 
-    c.push(new NPC(202, 'civilian', 'Deva', 55, 55, {
+    c.push(new NPC(202, 'civilian', 'Deva', 22, 20, {
       profession: 'potter',
       dialogueKey: 'potter',
       imagePoss: { x: 2, y: 0 },
       tint: 'rgba(210,100,130,0.32)',
       schedule: {
-        6: { x: 55, y: 55, state: 'working' },
+        6: { x: 22, y: 20, state: 'working' },
         12: { state: 'idle' },
-        17: { x: 40, y: 40, state: 'idle' },
-        19: { x: 53, y: 57, state: 'sleeping' },
-        22: { x: 53, y: 57, state: 'sleeping' }
+        17: { x: 19, y: 19, state: 'idle' },
+        19: { x: 23, y: 21, state: 'sleeping' },
+        22: { x: 23, y: 21, state: 'sleeping' }
       }
     }));
 
-    c.push(new NPC(203, 'civilian', 'Kala', 20, 30, {
+    c.push(new NPC(203, 'civilian', 'Kala', 12, 16, {
       profession: 'weaver',
       dialogueKey: 'weaver',
       imagePoss: { x: 3, y: 0 },
       tint: 'rgba(90,90,180,0.32)',
       schedule: {
-        6: { x: 20, y: 30, state: 'working' },
+        6: { x: 12, y: 16, state: 'working' },
         12: { state: 'idle' },
-        17: { x: 40, y: 40, state: 'idle' },
-        19: { x: 18, y: 32, state: 'sleeping' },
-        22: { x: 18, y: 32, state: 'sleeping' }
+        17: { x: 19, y: 19, state: 'idle' },
+        19: { x: 11, y: 16, state: 'sleeping' },
+        22: { x: 11, y: 16, state: 'sleeping' }
       }
     }));
 
-    c.push(new NPC(204, 'civilian', 'Hari', 60, 20, {
+    c.push(new NPC(204, 'civilian', 'Hari', 20, 13, {
       profession: 'trader',
       dialogueKey: 'trader',
       imagePoss: { x: 0, y: 0 },
       tint: 'rgba(200,170,50,0.32)',
       schedule: {
-        8: { x: 60, y: 20, state: 'working' },
+        8: { x: 20, y: 13, state: 'working' },
         12: { state: 'idle' },
-        17: { x: 40, y: 40, state: 'idle' },
-        19: { x: 58, y: 22, state: 'sleeping' },
-        22: { x: 58, y: 22, state: 'sleeping' }
+        17: { x: 19, y: 19, state: 'idle' },
+        19: { x: 21, y: 13, state: 'sleeping' },
+        22: { x: 21, y: 13, state: 'sleeping' }
       }
     }));
   }

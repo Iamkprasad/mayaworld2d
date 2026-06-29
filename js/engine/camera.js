@@ -26,6 +26,14 @@ export class Camera {
     targetX = Math.max(0, Math.min(this.mapWidthPx - this.width, targetX));
     targetY = Math.max(0, Math.min(this.mapHeightPx - this.height, targetY));
 
+    // Snap to whole device pixels. The map cache and entities all derive their
+    // screen position from camera.x/y; if it carries a fractional part the tile
+    // layer (which floors to a tile grid) and the sprites (which don't) disagree
+    // by sub-pixels every frame, producing the visible "swim"/stutter while
+    // walking. Integer camera + nearest-neighbour scaling = a crisp Emerald glide.
+    targetX = Math.round(targetX);
+    targetY = Math.round(targetY);
+
     if (!this._centered) {
       this._centered = true;
       this.x = targetX;

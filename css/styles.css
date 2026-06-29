@@ -505,6 +505,39 @@ header {
   box-shadow: 0 0 6px rgba(26, 107, 82, 0.08);
 }
 
+#hud-objective {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 230px;
+  margin-top: 2px;
+  background: rgba(10, 35, 24, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(196, 166, 79, 0.3);
+  border-left: 3px solid var(--gold);
+  border-radius: 4px;
+  padding: 3px 7px;
+  font-size: 0.6rem;
+  color: var(--cream-warm);
+  line-height: 1.25;
+  letter-spacing: 0.2px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  box-shadow: 0 0 8px rgba(196, 166, 79, 0.1);
+}
+
+#hud-objective-icon {
+  color: var(--gold);
+  font-size: 0.7rem;
+  flex-shrink: 0;
+  animation: objective-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes objective-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
 /* ================================================================
    DIALOGUE BOX
    ================================================================ */
@@ -527,12 +560,21 @@ header {
     0 8px 30px rgba(0, 0, 0, 0.7),
     0 0 30px rgba(196, 166, 79, 0.05),
     inset 0 1px 0 rgba(196, 166, 79, 0.1);
+}
+#dialogue-box.fade-in {
   animation: dialogue-slide-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+#dialogue-box.fade-out {
+  animation: dialogue-slide-down 0.2s ease-in forwards;
 }
 
 @keyframes dialogue-slide-up {
   from { transform: translateY(20px); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes dialogue-slide-down {
+  from { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(20px); opacity: 0; }
 }
 
 #dialogue-speaker {
@@ -551,6 +593,8 @@ header {
   height: 60px;
   overflow: hidden;
   font-size: 1.05rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .dialogue-arrow {
@@ -684,6 +728,11 @@ header {
   align-items: center;
   padding: 20px;
   z-index: 20;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+#dreaming-overlay.visible {
+  opacity: 1;
 }
 
 .dreaming-title {
@@ -775,12 +824,21 @@ header {
   z-index: 25;
   display: flex;
   flex-direction: column;
-  animation: journal-open 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+#journal-overlay.fade-in {
+  animation: journal-open 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+#journal-overlay.fade-out {
+  animation: journal-close 0.25s ease-in forwards;
 }
 
 @keyframes journal-open {
   from { transform: scale(0.95); opacity: 0; }
   to   { transform: scale(1); opacity: 1; }
+}
+@keyframes journal-close {
+  from { transform: scale(1); opacity: 1; }
+  to   { transform: scale(0.95); opacity: 0; }
 }
 
 .journal-header {
@@ -1135,7 +1193,6 @@ body.cinematic-active .cin-letterbox-bot {
    INTRO OVERLAY
    ================================================================ */
 #intro-overlay {
-
   position: absolute;
   top: 0;
   left: 0;
@@ -1147,6 +1204,11 @@ body.cinematic-active .cin-letterbox-bot {
   align-items: center;
   z-index: 50;
   padding: 30px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+#intro-overlay.visible {
+  opacity: 1;
 }
 
 .intro-glass {
@@ -1421,13 +1483,16 @@ body.cinematic-active .cin-letterbox-bot {
 }
 
 @keyframes flash {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.01); }
-  100% { transform: scale(1); }
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-3px) translateY(1px); }
+  40%  { transform: translateX(3px) translateY(-1px); }
+  60%  { transform: translateX(-2px) translateY(2px); }
+  80%  { transform: translateX(2px) translateY(-2px); }
+  100% { transform: translateX(0); }
 }
 
 .screen-shake {
-  animation: flash 0.1s 5 alternate;
+  animation: flash 0.12s ease-out;
 }
 
 /* Power LED */
