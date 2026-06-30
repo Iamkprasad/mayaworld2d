@@ -1,254 +1,73 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mayaworld 2D</title>
-  <meta name="theme-color" content="#0d2b1e">
-  <link rel="stylesheet" href="css/styles.css">
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>pokeemerald-wasm</title>
+  <link rel="stylesheet" href="/web/style.css" />
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-25RQ7HFHXS"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-25RQ7HFHXS');
+  </script>
 </head>
 <body>
-
-  <main>
-
-    <!-- HEADER -->
-    <header>
-      <div class="header-title">MAYAWORLD 2D</div>
-      <div class="header-spacer"></div>
-      <div class="header-controls">
-        <button class="nav-action-btn" id="upload-sav-btn" title="Upload Save">
-          <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h12v2H5v-2z"/></svg>
-          <span class="btn-label">Load</span>
-        </button>
-        <button class="nav-action-btn" id="download-sav-btn" title="Download Save">
-          <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-          <span class="btn-label">Save</span>
-        </button>
-        <input type="file" id="sav-file-input" accept=".sav" class="hidden">
-      </div>
+  <main class="shell" aria-label="pokeemerald-wasm emulator">
+    <header class="masthead">
+      <h1>pokeemerald-wasm</h1>
+      <a class="github-link" href="https://github.com/tripplyons/pokeemerald-wasm" target="_blank" rel="noreferrer" aria-label="Open pokeemerald-wasm on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.9 1.3 1.9 1.3 1.1 1.9 2.9 1.3 3.6 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.3-3.2-.1-.3-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.4 11.4 0 0 1 6 0C17.6 4.7 18.6 5 18.6 5c.6 1.6.2 2.9.1 3.2.8.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1.1.9 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
+        </svg>
+        <span>tripplyons</span>
+      </a>
     </header>
 
-    <!-- GAMEPLAY COCKPIT -->
-    <div class="gameplay-cockpit">
+    <section class="display-panel" aria-label="Game display">
+      <canvas id="screen" width="240" height="160" aria-label="Game screen"></canvas>
+    </section>
 
-      <!-- D-PAD (Left) -->
-      <div class="dpad-panel">
-        <button class="arcade-btn kp-up" id="btn-up" data-key="ArrowUp">↑</button>
-        <button class="arcade-btn kp-left" id="btn-left" data-key="ArrowLeft">←</button>
-        <div class="kp-space"></div>
-        <button class="arcade-btn kp-right" id="btn-right" data-key="ArrowRight">→</button>
-        <button class="arcade-btn kp-down" id="btn-down" data-key="ArrowDown">↓</button>
+    <div class="status" id="status">loading wasm…</div>
+
+    <section class="controls" aria-label="Controls">
+      <div class="dpad" aria-label="Directional pad">
+        <button data-key="up" aria-label="Up">↑</button>
+        <button data-key="left" aria-label="Left">←</button>
+        <button data-key="right" aria-label="Right">→</button>
+        <button data-key="down" aria-label="Down">↓</button>
       </div>
 
-      <!-- CENTER STAGE -->
-      <div class="center-stage">
-        <div class="game-viewport" id="emu-screen-container">
-          <canvas id="game-screen" width="960" height="640"></canvas>
+      <div class="face" aria-label="Action buttons">
+        <button data-key="b">B</button>
+        <button data-key="a">A</button>
+        <button data-key="select">SELECT</button>
+        <button data-key="start">START</button>
+      </div>
 
-          <!-- HUD -->
-          <div id="game-hud" class="hidden">
-            <div id="hud-breath-bar">
-              <span id="hud-breath-fill" style="width:100%"></span>
-              <span id="hud-breath-text">260/260</span>
-            </div>
-            <div id="hud-age">Age: <span id="hud-age-value">0</span></div>
-            <div id="hud-karma">
-              <span id="hud-karma-light">☀ <span id="hud-karma-light-val">0</span></span>
-              <span id="hud-karma-shadow">☽ <span id="hud-karma-shadow-val">0</span></span>
-            </div>
-            <div id="hud-act">Act <span id="hud-act-value">I</span></div>
-          </div>
-
-          <!-- Tint Filter -->
-          <div id="screen-tint" class="day-tint"></div>
-
-          <!-- Location Card -->
-          <div id="location-card" class="hidden">
-            <img id="location-img" src="assets/images/suryanagar_village.png" alt="Location">
-            <div id="location-info">
-              <div id="location-title">Suryanagar Village</div>
-              <div id="location-desc">The peaceful south village.</div>
-            </div>
-          </div>
-
-          <!-- Dialogue Box -->
-          <div id="dialogue-box" class="hidden">
-            <div id="dialogue-speaker">Bhrigu</div>
-            <div id="dialogue-text">Welcome, Seeker. Breathe. Find stillness.</div>
-            <div class="dialogue-arrow">▼</div>
-          </div>
-
-          <!-- Vritti Overlay -->
-          <div id="vritti-overlay" class="hidden">
-            <div id="vritti-text">"Are you sure this life has been enough?"</div>
-            <div id="vritti-instruction">Observe in silence (5s) or Dismiss (Z)</div>
-          </div>
-
-          <!-- Dreaming Void -->
-          <div id="dreaming-overlay" class="hidden">
-            <div class="dreaming-title">THE COSMIC VOID</div>
-            <div class="dreaming-subtitle">Select a Sage's voice to carry into your next life</div>
-            <div id="echoes-list"></div>
-            <button id="mauna-rebirth-btn">Sit in Silence (Unlock Mauna)</button>
-          </div>
-
-          <!-- Seeker's Journal -->
-          <div id="journal-overlay" class="hidden">
-            <div class="journal-header">
-              <div class="journal-title">Seeker's Journal</div>
-              <button class="close-journal-btn" id="close-journal-btn">✕</button>
-            </div>
-            <div class="journal-tabs">
-              <button class="tab-btn active" data-tab="status-tab">Status</button>
-              <button class="tab-btn" data-tab="vidyas-tab">Vidyas</button>
-              <button class="tab-btn" data-tab="dreams-tab">Dreams</button>
-              <button class="tab-btn" data-tab="lineage-tab">Lineage</button>
-            </div>
-            <div class="journal-content">
-              <div id="status-tab" class="tab-pane active">
-                <div class="status-grid">
-                  <div><strong>Name:</strong> <span id="stat-name">Samat-Seeker</span></div>
-                  <div><strong>Age:</strong> <span id="stat-age">0</span></div>
-                  <div><strong>Epoch:</strong> <span id="stat-epoch">Age of First Fire</span></div>
-                  <div><strong>Life Breath:</strong> <span id="stat-breath">260/260</span></div>
-                  <div><strong>Light Karma:</strong> <span id="stat-karma-light">0</span></div>
-                  <div><strong>Shadow Karma:</strong> <span id="stat-karma-shadow">0</span></div>
-                  <div><strong>Curiosity:</strong> <span id="stat-curiosity">None</span></div>
-                  <div><strong>Active Profession:</strong> <span id="stat-profession">None</span></div>
-                </div>
-                <div class="journal-section">
-                  <h3>Active Vidyas</h3>
-                  <div id="status-vidyas-list" class="mini-list"></div>
-                </div>
-              </div>
-              <div id="vidyas-tab" class="tab-pane">
-                <p class="tab-help">Discovery comes through practice, not menus. Unlocked Vidyas:</p>
-                <div id="vidyas-grid"></div>
-              </div>
-              <div id="dreams-tab" class="tab-pane">
-                <h3>Collected Dream Fragments</h3>
-                <p class="tab-help">Memory fragments found by sleeping in special places or bonding with Sages.</p>
-                <div id="dreams-list"></div>
-              </div>
-              <div id="lineage-tab" class="tab-pane">
-                <h3>Lineage Web</h3>
-                <p class="tab-help">Your spiritual lineage across the epochs.</p>
-                <div id="lineage-web-container">
-                  <svg id="lineage-svg" viewBox="0 0 400 200"></svg>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Cinematic Letterbox Bars -->
-          <div class="cin-letterbox-top" id="cin-letterbox-top"></div>
-          <div class="cin-letterbox-bot" id="cin-letterbox-bot"></div>
-
-          <!-- Cinematic Overlay (acts 0-4 text panels) -->
-          <div id="cinematic-overlay" class="hidden">
-            <!-- Act 0: Void / Title build -->
-            <div class="cin-act" id="cin-act-0">
-              <div class="cin-epigraph">AN ANCIENT CHRONICLES PRESENTATION</div>
-            </div>
-            <!-- Act 1: Creation -->
-            <div class="cin-act" id="cin-act-1">
-              <div class="cin-narration">In the age before memory…</div>
-              <div class="cin-subnote">an island rose at the navel of the sea.</div>
-            </div>
-            <!-- Act 2: Sages -->
-            <div class="cin-act" id="cin-act-2">
-              <div class="cin-narration">Nine Sages held the law of <span class="cin-gold">Ṛta</span></div>
-              <div class="cin-subnote">— balance, truth, and the eternal flame of duty.</div>
-            </div>
-            <!-- Act 3: Fall -->
-            <div class="cin-act" id="cin-act-3">
-              <div class="cin-narration cin-red">Then the Tenth Sage fell.</div>
-              <div class="cin-subnote cin-red-sub">Tamas embraced the void. He became <strong>Mayasur</strong>.</div>
-            </div>
-            <!-- Act 4: Player -->
-            <div class="cin-act" id="cin-act-4">
-              <div class="cin-narration">You are <span class="cin-teal">Samat</span>.</div>
-              <div class="cin-subnote">Born once more into the cycle. Seek. Remember. Balance.</div>
-            </div>
-            <!-- Skip hint -->
-            <button id="cin-skip-btn">SKIP  ▶</button>
-          </div>
-
-          <!-- Intro Overlay (title screen — shown after cinematic) -->
-          <div id="intro-overlay" class="hidden">
-            <div class="intro-glass">
-              <div class="intro-header">
-                <span class="intro-badge">ANCIENT CHRONICLES</span>
-                <h2 class="intro-title">MAYAWORLD</h2>
-                <div class="intro-subtitle">SEEKER'S REBIRTH</div>
-              </div>
-              <div class="intro-scroll-container">
-                <div class="intro-scroll-text">
-                  <p class="intro-p">Since time immemorial, the island of Mayaworld remained in perfect harmony under the eternal law of <strong>Rta</strong>, guided by the wisdom of the Nine Sages.</p>
-                  <p class="intro-p">But the Tenth Sage, <strong>Tamas</strong>, consumed by desire to conquer Rta, succumbed to the corruption of the ego. He became <strong>Mayasur</strong>, a demonic shadow lashing out against the light.</p>
-                  <p class="intro-p">As the cycle fractures, you are born as <strong>Samat</strong>, the Seeker. You must walk the overworld, master the sacred Vidyas, stoke the fires of Sadhana, and resolve the balance before your final breath fades.</p>
-                  <p class="intro-p">The cycles of Samsara await. Every rebirth carries your spiritual essence forward. Seek the Altar of Vows at the center of the world...</p>
-                </div>
-              </div>
-              <div class="intro-actions">
-                <button id="start-game-btn" class="intro-btn">BEGIN SADHANA</button>
-                <div class="intro-key-hint">Press START (ENTER) or click to begin</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SYSTEM ACTION BAR -->
-        <div class="system-action-bar hidden">
-          <div class="speed-inline">
-            <label for="speed-slider" class="speed-label">SPD</label>
-            <input type="range" id="speed-slider" min="0.5" max="3" step="0.1" value="1.0">
-            <span id="speed-display">1.0x</span>
-          </div>
-          <button class="sys-pill-btn" id="btn-select">SELECT</button>
-          <button class="sys-pill-btn" id="btn-start">START</button>
+      <div class="speed-control" aria-label="Speed controls">
+        <div class="speed-heading">Speed <output id="speed-value">1x</output></div>
+        <div class="speed-buttons">
+          <button type="button" data-speed="0.5">0.5x</button>
+          <button type="button" data-speed="2">2x</button>
+          <button type="button" data-speed="1">Reset</button>
+          <button type="button" data-speed="unlimited">Unlimited</button>
         </div>
       </div>
 
-      <!-- ACTION BUTTONS (Right) -->
-      <div class="action-pedal-pod">
-        <button class="arcade-btn round-button btn-b" id="btn-b" data-key="KeyX">B</button>
-        <button class="arcade-btn round-button btn-a" id="btn-a" data-key="KeyZ">A</button>
+      <div class="utility-controls" aria-label="Save and display controls">
+        <button id="download-save" type="button">Download .sav</button>
+        <label class="upload-save" for="upload-save">Upload .sav</label>
+        <button id="fullscreen" type="button">Big Picture</button>
+        <input id="upload-save" type="file" accept=".sav,.srm,application/octet-stream" />
       </div>
+    </section>
 
-    </div>
-
-    <!-- SETTINGS MODAL -->
-    <div id="settings-overlay" class="hidden">
-      <div class="settings-content-card">
-        <div class="settings-header-title">Diagnostic Monitor</div>
-        <div class="settings-item-row">
-          <label>Performance Frame Rate</label>
-          <div class="badge-fps-monitor"><span id="fps-display">60</span> FPS</div>
-        </div>
-        <div class="settings-item-row">
-          <label>Tick Processing Regulator</label>
-          <div class="slider-wrapper-layout">
-            <input type="range" class="range-slider-core" min="0.5" max="3" step="0.1" value="1.0" id="speed-slider-modal">
-            <span class="slider-value-label" id="speed-display-modal">1.0x</span>
-          </div>
-        </div>
-        <div class="settings-item-row">
-          <label>Power Status</label>
-          <span id="power-led" class="power-led"></span>
-        </div>
-        <button class="modal-dismiss-btn" id="settings-close-trigger">Close</button>
-      </div>
-    </div>
-
+    <p class="keys">Keyboard: arrows, Z=A, X=B, Enter=Start, Shift=Select.</p>
   </main>
-
-  <!-- Audio -->
-  <div class="hidden">
-    <audio id="sfx-beep" src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==DirectSound"></audio>
-  </div>
-
-  <script type="module" src="js/engine/game.js"></script>
+  <script type="module" src="/web/app.js"></script>
 </body>
 </html>
