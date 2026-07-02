@@ -511,7 +511,7 @@ function normalizeSaveForCurrentBuild(bytes) {
 }
 
 async function wasmModule() {
-  wasmModulePromise ??= fetch('/build/wasm/pokeemerald.wasm', { cache: 'no-store' })
+  wasmModulePromise ??= fetch(new URL('./pokeemerald.wasm', import.meta.url), { cache: 'no-store' })
     .then((res) => res.arrayBuffer())
     .then(async (bytes) => ({ bytes, module: await WebAssembly.compile(bytes) }));
   return wasmModulePromise;
